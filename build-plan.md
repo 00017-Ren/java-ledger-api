@@ -8,7 +8,7 @@ Target: complete the project in 6 weeks. The 13 phases are grouped by week below
 
 | Week | Theme | Phases |
 | ---- | ----- | ------ |
-| 1 | Data layer: foundation, entities, repositories | 1, 2, 3 |
+| 1 | Data layer: foundation, entities, repositories | 1 (done), 2 (done), 3 |
 | 2 | API contract: DTOs/validation and exception handling | 4, 5 |
 | 3 | Security: auth basics then Spring Security + JWT (hardest week) | 6, 7 |
 | 4 | Domain logic: accounts then transactions (portfolio centrepiece) | 8, 9 |
@@ -41,10 +41,10 @@ Completed foundation:
 - Base enums for roles, transaction types, and transaction statuses
 - SpringDoc/OpenAPI dependency
 - JWT library dependencies
+- JPA entities for `User`, `Account`, and `Transaction` (Phase 2 complete)
 
 Not built yet:
 
-- JPA entities
 - Repository interfaces
 - DTOs
 - Service layer
@@ -87,7 +87,7 @@ Checkpoint:
 - Database schema exists.
 - Tests run.
 
-## Phase 2: Build JPA Entities
+## Phase 2: Build JPA Entities [COMPLETED]
 
 Goal: map Java classes to the existing SQL tables.
 
@@ -127,8 +127,8 @@ Git:
 
 Checkpoint:
 
-- App starts with `ddl-auto: validate`.
-- Hibernate confirms entities match the Flyway schema.
+- App starts with `ddl-auto: validate`. [done]
+- Hibernate confirms entities match the Flyway schema. [done]
 
 ## Phase 3: Add Repositories
 
