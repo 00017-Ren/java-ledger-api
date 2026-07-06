@@ -8,23 +8,24 @@ The project models a simple banking-style ledger where users can register, creat
 
 In progress.
 
-Current foundation completed:
+Completed:
 
 - Spring Boot project setup
 - PostgreSQL Docker Compose setup
 - Flyway database migrations
 - Initial database schema for users, accounts, and transactions
 - Base enums for roles and transaction states
+- JPA entity mappings for users, accounts, and transactions
+- Repository layer (Spring Data JPA)
+- Repository slice tests using `@DataJpaTest` with Testcontainers (real PostgreSQL)
 
 Upcoming work:
 
-- JPA entity mappings
-- Repository layer
 - Authentication and JWT security
 - Account and transaction services
 - REST controllers
 - Validation and exception handling
-- Unit and integration tests
+- Service and controller tests
 - Deployment
 
 ## Tech Stack
@@ -40,6 +41,7 @@ Upcoming work:
 - SpringDoc OpenAPI / Swagger UI
 - Docker Compose
 - JUnit 5
+- Testcontainers
 
 ## Core Features
 
