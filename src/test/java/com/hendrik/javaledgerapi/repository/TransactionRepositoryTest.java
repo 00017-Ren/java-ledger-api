@@ -20,7 +20,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import java.math.BigDecimal;
 
 import static com.hendrik.javaledgerapi.model.enums.Role.USER;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
 @AutoConfigureTestDatabase
@@ -88,7 +88,7 @@ class TransactionRepositoryTest {
 
         Page<Transaction> foundTransactions = transactionRepository.findByAccountId(testAccount.getId(), Pageable.unpaged());
 
-        assertThat(foundTransactions.getContent().size()).isEqualTo(2) ;
+        assertThat(foundTransactions.getContent().size()).isEqualTo(2);
 
     }
 
