@@ -67,6 +67,139 @@ takeaway**.
   safer and version-controlled, unlike `ddl-auto: update` which should never be
   used in production.
 
+## Testing
+
+### Watch a test fail before you trust it passing
+- **Why it matters:** Distinguishes engineers who write *meaningful* tests from
+  those who write tests that always pass. A strong interview talking point.
+- **Takeaway:** A green test proves nothing unless you've seen it go red for the
+  right reason. Temporarily break the input (e.g. query a non-existent value) and
+  confirm the assertion fails, then revert. Catches no-op assertions and
+  mis-wired tests.
+
+### No-op assertions with AssertJ
+- **Why it matters:** A subtle, common bug that silently disables a test.
+- **Takeaway:** `assertThat(x.isPresent());` asserts **nothing** — `assertThat(...)`
+  only *builds* an assertion object; you must chain a check
+  (`.isTrue()`, `.isPresent()`, `.isEqualTo(...)`). Prefer AssertJ's first-class
+  `Optional` support: `assertThat(optional).isPresent()` /
+  `.contains(value)` — clearer failure messages than asserting the raw boolean.
+
+### `@DataJpaTest` + Testcontainers: use the real DB
+- **Why it matters:** Shows you know slice tests and high-fidelity DB testing.
+- **Takeaway:** `@DataJpaTest` loads only the JPA slice and wraps each test in a
+  transaction that **rolls back** after, keeping tests isolated. By default it
+  swaps in an embedded DB — add `@AutoConfigureTestDatabase(replace = NONE)` to
+  keep your real DataSource. With `@Testcontainers` + a `static @Container` +
+  `@ServiceConnection`, Spring Boot 3.1+/4 auto-wires the container's JDBC
+  connection (no manual `@DynamicPropertySource`). Static container = one per
+  class (fast); non-static = one per method (slow). When Flyway is on the
+  classpath it runs against the container, so migrations (including seed data like
+  an admin insert) build the schema — real Postgres, not H2.
+
+## Spring Data JPA
+
+### The Repository pattern
+- **Why it matters:** Common design-pattern question; explains *why* Spring's data
+  layer is easy to test and swap.
+- **Takeaway:** The repository abstracts data access behind a collection-like
+  interface, so the rest of the app doesn't know or care whether data comes from
+  Postgres, an in-memory store, or a mock. You define the interface (the
+  contract); Spring Data generates the implementation at runtime.
+
+### Derived query methods
+- **Why it matters:** The signature Spring Data feature; interviewers check you
+  know queries can come from method *names*.
+- **Takeaway:** Spring parses the method name and builds the query, e.g.
+  `findByEmail(String)` → `WHERE email = ?`. Property traversal works too:
+  `findByUserId(UUID)` means "the `id` of the `user` association" (no need to load
+  a full `User`). Extending `JpaRepository<T, ID>` provides `save`, `findById`,
+  `findAll`, `delete`, etc. for free.
+
+### `@Query` (JPQL) vs derived names vs native SQL
+- **Why it matters:** "JPQL vs SQL?" is a frequent question.
+- **Takeaway:** When a derived name gets long/unreadable or the logic is complex
+  (e.g. "source OR destination account"), prefer an explicit `@Query`. JPQL
+  queries the **object model** (entities/fields like `t.sourceAccount.id`), is
+  database-agnostic, and is translated to SQL by Hibernate. Native SQL
+  (`nativeQuery = true`) queries tables/columns directly and ties you to a
+  specific DB. Bind params with `@Param`.
+
+### `Optional<T>` return types
+- **Why it matters:** "Why return `Optional` instead of null?" is common.
+- **Takeaway:** `Optional` encodes "may be absent" in the type system, forcing the
+  caller to handle the empty case instead of risking a `NullPointerException`.
+  Idiomatic for finders that return 0-or-1 result (`findByEmail`). Use `List` for
+  0-or-many.
+
+### Pagination: `Page` and `Pageable`
+- **Why it matters:** Any real API needs it; strong portfolio talking point.
+- **Takeaway:** Adding a `Pageable` parameter tells Spring Data to page/sort the
+  query. `Page<T>` returns the rows **plus** metadata (total elements, total
+  pages, current page). Avoids loading huge result sets into memory. `Slice<T>` is
+  a lighter alternative that skips the expensive total-count query.
+
+## Architecture / System Design
+
+### Package by layer vs package by feature
+- **Why it matters:** A recurring architecture/DDD discussion; shows you think
+  about maintainability, not just "does it work".
+- **Takeaway:** *By layer* (`model/`, `repository/`, `service/`, `controller/`)
+  optimises for "show me all the X" and is the familiar Spring-tutorial default.
+  *By feature* (`user/`, `account/`, `transaction/` — each containing its own
+  entity, repo, service, controller) optimises for "show me everything about Y",
+  which is how you actually change code. By-feature also enables **package-private**
+  access to hide internals and enforce boundaries — impossible with by-layer.
+  Rule of thumb: switch to by-feature when a layer package holds ~7+ classes or
+  you have 3+ distinct domains. For a small portfolio project, by-layer is fine —
+  but knowing *why* and *when* to switch is the real interview signal.
+
+## Maven / Build
+
+### `<properties>` version vs `<dependencyManagement>` vs BOM import
+- **Why it matters:** Explains *why* Spring Boot lets you omit `<version>` and how
+  version management actually works — common build-tooling question.
+- **Takeaway:** A `<properties>` entry (e.g. `testcontainers.version`) just names a
+  version string; it does **not** supply a version to a dependency on its own.
+  `<dependencyManagement>` is what actually supplies versions to version-less
+  `<dependency>` entries. A **BOM import** (`<type>pom</type>`,
+  `<scope>import</scope>`) pulls in a whole family of managed versions at once.
+  The Spring Boot parent manages *its own* artifacts (so
+  `spring-boot-testcontainers` needs no version) and defines the
+  `testcontainers.version` property, but you must still import the
+  `testcontainers-bom` yourself to manage the individual `org.testcontainers:*`
+  modules. Reference the property (`${testcontainers.version}`) in the import so
+  the version stays in lockstep with Spring Boot on upgrade.
+
+### Verify artifact coordinates after a major version bump
+- **Why it matters:** Shows you don't blindly trust stale tutorials — a real
+  engineering-hygiene signal.
+- **Takeaway:** Testcontainers **2.x** changed three things at once vs the 1.x
+  tutorials found everywhere online:
+  - **Artifact names** gained a `testcontainers-` prefix
+    (`postgresql` → `testcontainers-postgresql`,
+    `junit-jupiter` → `testcontainers-junit-jupiter`). Old names give a
+    "version is missing" POM *model-building* error (raised before BOMs resolve,
+    so it looks like a version problem rather than a rename).
+  - **Import packages** moved
+    (`org.testcontainers.containers.PostgreSQLContainer` →
+    `org.testcontainers.postgresql.PostgreSQLContainer`).
+  - **Generics removed** — `PostgreSQLContainer` was `PostgreSQLContainer<SELF>`
+    in 1.x (used as `<?>`); in 2.x it is non-generic, so `new PostgreSQLContainer(...)`
+    with no `<>` (using `<>` gives "does not take parameters").
+  General lesson: a major version bump can invalidate artifact names, packages,
+  AND API shape — verify against the real BOM/Javadoc, not tutorials.
+
+### Spring Boot 4 modularization: test slice annotations moved
+- **Why it matters:** A current, concrete "I keep up with framework changes" point.
+- **Takeaway:** Spring Boot 4 split the monolith into fine-grained modules. Test
+  slice annotations left `spring-boot-starter-test`:
+  - `@DataJpaTest` now needs the `spring-boot-starter-data-jpa-test` dependency and
+    lives in `org.springframework.boot.data.jpa.test.autoconfigure` (the old
+    Boot 3 package `...test.autoconfigure.orm.jpa` no longer exists).
+  So "Cannot resolve symbol `@DataJpaTest`" on Boot 4 = missing the new test
+  starter, not an IDE glitch.
+
 ## Java
 
 ### Money: use `BigDecimal`, never `double`/`float`
