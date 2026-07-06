@@ -97,6 +97,26 @@ takeaway**.
   classpath it runs against the container, so migrations (including seed data like
   an admin insert) build the schema — real Postgres, not H2.
 
+### Asserting on `Page` results
+- **Why it matters:** Pagination is everywhere; interviewers check you test the
+  window *and* the totals, not just "some rows came back".
+- **Takeaway:** A `Page<T>` exposes two different things worth asserting:
+  the **page window** (`getContent()` / `getContent().size()` = rows in *this*
+  page) and the **full result metadata** (`getTotalElements()` = total across all
+  pages, `getTotalPages()`, `hasNext()`). Testing a `PageRequest.of(0, 2)` over 3
+  matching rows should assert `getContent().size() == 2`,
+  `getTotalElements() == 3`, and `hasNext() == true`. Use `Pageable.unpaged()`
+  when you only care about the full set, not paging.
+
+### Test an OR query with a negative case
+- **Why it matters:** Proves a query is correct by showing it doesn't *over*-match,
+  not just that it returns something.
+- **Takeaway:** For a "source OR destination account" query, arrange data that
+  includes a row involving *neither* target account (e.g. a deposit to a different
+  account) and assert it is **excluded** from the result. A test that only checks
+  matching rows can pass even if the WHERE clause is too broad; the negative case
+  is what actually validates the boundary.
+
 ## Spring Data JPA
 
 ### The Repository pattern
