@@ -237,6 +237,25 @@ takeaway**.
   Store them as `String`. Bonus reasoning: a 12-digit value overflows a Java
   `int` (max ~2.1 billion, 10 digits), so `int` would be wrong on size alone.
 
+### Static factory method naming conventions
+- **Why it matters:** Effective Java (Item 1) territory — a common "why not just
+  use a constructor" follow-up question, and the naming itself signals whether
+  you've read it.
+- **Takeaway:** A `static` method that returns an instance of its class, used
+  instead of (or alongside) a public constructor. Benefits over a constructor:
+  it can have a descriptive **name** (constructors are all just the class name),
+  it doesn't have to create a **new** object every call (caching/reuse), and it
+  can return a **subtype**. Conventional names carry meaning:
+  - `from(OtherType)` — type conversion, one type in, a different type out
+    (e.g. `AccountResponse.from(Account account)`).
+  - `of(...)` — combines multiple standalone arguments into an instance
+    (e.g. `List.of(a, b, c)`).
+  - `valueOf(...)` — a more verbose `of`, common on wrapper/enum types
+    (`Integer.valueOf(...)`).
+  - `getInstance()`/`newInstance()` — singleton or guaranteed-new instance.
+  Picking `from` for an entity-to-DTO mapper (rather than a generic `of` or a
+  constructor) documents *why* the method exists at the call site.
+
 ## Git
 
 ### Feature-branch + Pull Request workflow
