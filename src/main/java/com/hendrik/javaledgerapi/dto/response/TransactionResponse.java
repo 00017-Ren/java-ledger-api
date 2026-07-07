@@ -1,5 +1,6 @@
 package com.hendrik.javaledgerapi.dto.response;
 
+import com.hendrik.javaledgerapi.model.Transaction;
 import com.hendrik.javaledgerapi.model.enums.TransactionStatus;
 import com.hendrik.javaledgerapi.model.enums.TransactionType;
 
@@ -24,4 +25,16 @@ public record TransactionResponse(
 
         LocalDateTime createdAt
 ) {
+    public static TransactionResponse from(Transaction transaction) {
+        return new TransactionResponse(
+                transaction.getId(),
+                transaction.getSourceAccount() == null ? null : transaction.getSourceAccount().getAccountNumber(),
+                transaction.getDestinationAccount() == null ? null : transaction.getDestinationAccount().getAccountNumber(),
+                transaction.getAmount(),
+                transaction.getType(),
+                transaction.getStatus(),
+                transaction.getDescription(),
+                transaction.getCreatedAt()
+        );
+    }
 }
