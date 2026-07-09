@@ -8,8 +8,8 @@ Target: complete the project in 6 weeks. The 13 phases are grouped by week below
 
 | Week | Theme | Phases |
 | ---- | ----- | ------ |
-| 1 | Data layer: foundation, entities, repositories | 1 (done), 2 (done), 3 |
-| 2 | API contract: DTOs/validation and exception handling | 4, 5 |
+| 1 | Data layer: foundation, entities, repositories | 1 (done), 2 (done), 3 (done) |
+| 2 | API contract: DTOs/validation and exception handling | 4 (done), 5 |
 | 3 | Security: auth basics then Spring Security + JWT (hardest week) | 6, 7 |
 | 4 | Domain logic: accounts then transactions (portfolio centrepiece) | 8, 9 |
 | 5 | Quality: tests then API documentation | 10, 11 |
@@ -42,17 +42,18 @@ Completed foundation:
 - SpringDoc/OpenAPI dependency
 - JWT library dependencies
 - JPA entities for `User`, `Account`, and `Transaction` (Phase 2 complete)
+- Repository layer with Testcontainers-backed slice tests (Phase 3 complete)
+- Request/response DTOs with bean validation, tested via standalone `Validator`
+  unit tests (Phase 4 complete)
 
 Not built yet:
 
-- Repository interfaces
-- DTOs
 - Service layer
 - Controllers
 - Security configuration
 - JWT authentication flow
 - Global exception handling
-- Real tests beyond the context load test
+- Real tests beyond the context load test and DTO/repository unit tests
 - Dockerfile and full app containerization
 - Deployment
 
@@ -130,7 +131,7 @@ Checkpoint:
 - App starts with `ddl-auto: validate`. [done]
 - Hibernate confirms entities match the Flyway schema. [done]
 
-## Phase 3: Add Repositories
+## Phase 3: Add Repositories [COMPLETED]
 
 Goal: create the database access layer.
 
@@ -166,11 +167,11 @@ Git:
 
 Checkpoint:
 
-- Repository tests can save and load basic records.
+- Repository tests can save and load basic records. [done]
 
 ## Week 2: API Contract
 
-## Phase 4: Add DTOs And Validation
+## Phase 4: Add DTOs And Validation [COMPLETED]
 
 Goal: keep API input/output separate from database entities.
 
@@ -206,7 +207,9 @@ Git:
 
 Checkpoint:
 
-- Invalid requests can be rejected cleanly before service logic runs.
+- Invalid requests can be rejected cleanly before service logic runs. [done —
+  verified via standalone `Validator` unit tests per request DTO, since the
+  service/controller layer doesn't exist yet]
 
 ## Phase 5: Add Exception Handling
 
