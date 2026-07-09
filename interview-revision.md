@@ -85,6 +85,49 @@ takeaway**.
   `Optional` support: `assertThat(optional).isPresent()` /
   `.contains(value)` — clearer failure messages than asserting the raw boolean.
 
+### Argument-order bugs: a test can target the wrong field
+- **Why it matters:** Another way a test can pass while proving nothing —
+  distinct from a no-op assertion, easy to introduce with multi-arg
+  constructors/records.
+- **Takeaway:** Passing a value into the wrong constructor position (e.g.
+  `new RegisterRequest(invalidPassword, "validPassword")` when the signature is
+  `(email, password)`) silently tests the *other* field's constraints instead.
+  The test can still pass — just for the wrong reason. Same fix as always:
+  temporarily remove the constraint you claim to be testing and confirm the
+  test goes red; if it doesn't, you're not testing what you think you are.
+
+### Testing Bean Validation constraints without a Spring context
+- **Why it matters:** There's no test-slice annotation for Bean Validation
+  alone — this is the standard way to unit test a DTO's constraints in
+  isolation, useful when the service/controller layer isn't built yet.
+- **Takeaway:** Build a `Validator` directly and reuse it via `@BeforeAll`:
+  ```java
+  private static Validator validator;
+
+  @BeforeAll
+  static void setUpValidator() {
+      validator = Validation.buildDefaultValidatorFactory().getValidator();
+  }
+  ```
+  Then `Set<ConstraintViolation<T>> violations = validator.validate(dto);` and
+  assert on the set (`.isEmpty()` for valid input, `.isNotEmpty()` — or better,
+  `.hasSize(n)` — for invalid input). No Spring context required.
+
+### Combining null and invalid values in one `@ParameterizedTest`
+- **Why it matters:** `@ValueSource` alone can't express this — knowing the
+  alternatives is the difference between fighting the framework and using it
+  well.
+- **Takeaway:** `@ValueSource` only accepts primitives/`String`/`Class` — no
+  `null`, no arbitrary types like `BigDecimal`. Two ways to combine null with
+  other invalid values in a single test:
+  - **`@NullSource` + `@ValueSource`** stacked on the same method (supported
+    since JUnit 5.8) — parse/convert inside the test body if the target type
+    isn't a primitive/String.
+  - **`@MethodSource`** returning a `Stream<T>` (or `Stream<Arguments>`) that
+    includes `null` directly — keeps the real type end-to-end, no parsing;
+    generally the cleaner option for non-primitive types like `BigDecimal`.
+  Either way, no need for a separate `@Test` just to cover the null case.
+
 ### `@DataJpaTest` + Testcontainers: use the real DB
 - **Why it matters:** Shows you know slice tests and high-fidelity DB testing.
 - **Takeaway:** `@DataJpaTest` loads only the JPA slice and wraps each test in a
@@ -236,6 +279,25 @@ takeaway**.
   quantities — you never do arithmetic on them and leading zeros are significant.
   Store them as `String`. Bonus reasoning: a 12-digit value overflows a Java
   `int` (max ~2.1 billion, 10 digits), so `int` would be wrong on size alone.
+
+### Static factory method naming conventions
+- **Why it matters:** Effective Java (Item 1) territory — a common "why not just
+  use a constructor" follow-up question, and the naming itself signals whether
+  you've read it.
+- **Takeaway:** A `static` method that returns an instance of its class, used
+  instead of (or alongside) a public constructor. Benefits over a constructor:
+  it can have a descriptive **name** (constructors are all just the class name),
+  it doesn't have to create a **new** object every call (caching/reuse), and it
+  can return a **subtype**. Conventional names carry meaning:
+  - `from(OtherType)` — type conversion, one type in, a different type out
+    (e.g. `AccountResponse.from(Account account)`).
+  - `of(...)` — combines multiple standalone arguments into an instance
+    (e.g. `List.of(a, b, c)`).
+  - `valueOf(...)` — a more verbose `of`, common on wrapper/enum types
+    (`Integer.valueOf(...)`).
+  - `getInstance()`/`newInstance()` — singleton or guaranteed-new instance.
+  Picking `from` for an entity-to-DTO mapper (rather than a generic `of` or a
+  constructor) documents *why* the method exists at the call site.
 
 ## Git
 
