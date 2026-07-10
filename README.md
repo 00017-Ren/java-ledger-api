@@ -18,13 +18,14 @@ Completed:
 - JPA entity mappings for users, accounts, and transactions
 - Repository layer (Spring Data JPA)
 - Repository slice tests using `@DataJpaTest` with Testcontainers (real PostgreSQL)
+- Request/response DTOs with Jakarta Bean Validation
+- Global exception handling (`@RestControllerAdvice`) with unit tests
 
 Upcoming work:
 
 - Authentication and JWT security
 - Account and transaction services
 - REST controllers
-- Validation and exception handling
 - Service and controller tests
 - Deployment
 
