@@ -215,7 +215,45 @@ takeaway**.
   access to hide internals and enforce boundaries — impossible with by-layer.
   Rule of thumb: switch to by-feature when a layer package holds ~7+ classes or
   you have 3+ distinct domains. For a small portfolio project, by-layer is fine —
-  but knowing *why* and *when* to switch is the real interview signal.
+   but knowing *why* and *when* to switch is the real interview signal.
+
+## Spring / Exception Handling
+
+### `@RestControllerAdvice` and centralised error handling
+- **Why it matters:** The standard Spring pattern for turning stack traces into
+  clean API errors; also a concrete example of the Chain of
+  Responsibility/cross-cutting-concern idea applied to error handling.
+- **Takeaway:** `@RestControllerAdvice` = `@ControllerAdvice` + `@ResponseBody`
+  — handler method return values are serialized straight to the response body
+  (JSON), not resolved as a view name, which is what a REST API needs.
+  `@ExceptionHandler(SomeException.class)` methods intercept that exception
+  type (and subtypes) thrown from *any* controller, so individual controllers
+  stay free of try/catch and focus on routing + delegating.
+
+### A custom exception hierarchy: unchecked, with a shared base
+- **Why it matters:** "Why extend `RuntimeException` instead of `Exception`?"
+  is a common follow-up once you've built a `@RestControllerAdvice`.
+- **Takeaway:** Checked exceptions force every method up the call stack to
+  declare `throws X` or catch it — ceremony with no payoff when a central
+  advice class catches everything regardless. Business/domain exceptions in a
+  Spring REST API are almost always unchecked (`extends RuntimeException`). A
+  shared abstract base (e.g. `ApiException` carrying an `HttpStatus`) lets one
+  `@ExceptionHandler(ApiException.class)` method handle every concrete
+  subtype, instead of one handler per exception type.
+
+### Ask the exception for its status vs. using a known constant
+- **Why it matters:** Two different, both-correct patterns depending on
+  whether an exception's status is genuinely dynamic or fixed by definition —
+  worth being deliberate about which one applies.
+- **Takeaway:** For your own exceptions where the status varies per instance
+  (`ApiException.getHttpStatus()`), read it off the exception. For framework
+  exceptions whose status is fixed by what the exception *means* — e.g.
+  `MethodArgumentNotValidException.getStatusCode()` is hardcoded in Spring's
+  source to always return `HttpStatus.BAD_REQUEST`, there's no scenario where
+  it's anything else — just use the constant (`HttpStatus.BAD_REQUEST`)
+  directly rather than dynamically resolving it back from an int. Confirmed by
+  reading the actual Spring source rather than assuming: don't guess framework
+  behaviour, check it.
 
 ## Maven / Build
 
