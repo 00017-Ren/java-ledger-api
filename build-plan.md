@@ -211,7 +211,7 @@ Checkpoint:
   verified via standalone `Validator` unit tests per request DTO, since the
   service/controller layer doesn't exist yet]
 
-## Phase 5: Add Exception Handling
+## Phase 5: Add Exception Handling [COMPLETED]
 
 Goal: return clean API errors instead of stack traces.
 
@@ -235,13 +235,17 @@ Git:
 
 - Branch: `feature/exception-handling`
 - Example commits:
-  - `feat: add custom domain exceptions`
-  - `feat: add global RestControllerAdvice handler`
+  - `feat: add custom domain exceptions with ApiException base`
+  - `feat: add global RestControllerAdvice exception handler`
+  - `docs: add exception handling revision notes`
+  - `test: add unit tests for GlobalExceptionHandler`
 - PR title: "Add global exception handling".
 
 Checkpoint:
 
-- Bad requests return readable JSON errors.
+- Bad requests return readable JSON errors. [done — verified via unit tests on
+  `GlobalExceptionHandler` per handler method (mocked `HttpServletRequest`/
+  `BindingResult`), since the controller/service layer doesn't exist yet]
 
 ## Week 3: Security
 
