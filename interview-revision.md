@@ -217,6 +217,139 @@ takeaway**.
   you have 3+ distinct domains. For a small portfolio project, by-layer is fine —
    but knowing *why* and *when* to switch is the real interview signal.
 
+## Spring / Dependency Injection & Service Layer
+
+### Constructor injection vs. field injection
+- **Why it matters:** Almost guaranteed to come up if you mention Spring in an
+  interview — "why not just `@Autowired` the field?"
+- **Takeaway:** Constructor injection makes dependencies `private final`
+  (immutable, can't be reassigned) and makes it impossible to construct the
+  object in a broken/half-wired state — the compiler enforces every dependency
+  is supplied. It also makes unit testing trivial: `new AuthService(mockRepo,
+  mockEncoder)` needs no Spring context or reflection. Field injection
+  (`@Autowired` directly on a field) allows a class to exist with `null`
+  dependencies until Spring populates them, and requires a testing framework
+  or reflection to inject mocks. With exactly one constructor, Spring
+  auto-detects and uses it — no `@Autowired` annotation needed at all;
+  it's only required to disambiguate when a class has multiple constructors.
+
+### `@Service` vs `@Component` vs `@Repository`
+- **Why it matters:** Shows you understand Spring's stereotype annotations
+  aren't just decoration.
+- **Takeaway:** All three are meta-annotated with `@Component`, so functionally
+  they all register a bean the same way. `@Service` is a semantic marker for
+  "business logic lives here" — self-documenting architecture. `@Repository`
+  additionally enables Spring's exception translation (wrapping
+  JDBC/Hibernate exceptions into Spring's unchecked `DataAccessException`
+  hierarchy). `@Controller`/`@RestController` marks the web layer. Using the
+  specific one over generic `@Component` costs nothing and documents intent.
+
+## Spring / Web Layer & Validation
+
+### `@RestController` vs `@Controller`
+- **Why it matters:** Same composition pattern as `@RestControllerAdvice`,
+  worth being able to state precisely.
+- **Takeaway:** `@RestController` = `@Controller` + `@ResponseBody`. Method
+  return values are serialized straight into the HTTP response body (JSON for
+  a REST API), instead of being resolved as a view template name the way a
+  traditional MVC `@Controller` would. `@RestControllerAdvice` follows the
+  identical pattern for exception handlers (`@ControllerAdvice` +
+  `@ResponseBody`) — same underlying idea applied to two different places.
+
+### The `@Valid` + `@RequestBody` validation pipeline
+- **Why it matters:** A complete, connected story interviewers like — shows
+  you understand a request's full journey, not just isolated annotations.
+- **Takeaway:** `@RequestBody` deserializes incoming JSON into a DTO.
+  `@Valid` then runs Jakarta Bean Validation against that DTO's constraint
+  annotations (`@Email`, `@NotBlank`, `@Size`, etc.) — **before** the
+  controller method body executes at all. If any constraint fails, Spring
+  throws `MethodArgumentNotValidException` and the method body never runs.
+  That exception is caught centrally by a `@RestControllerAdvice`
+  (`@ExceptionHandler(MethodArgumentNotValidException.class)`), turned into a
+  clean 400 response, with zero validation logic written in the controller
+  itself. One annotation (`@Valid`) wires together: DTO constraints → request
+  parsing → automatic rejection → centralised error handling.
+
+## Spring Security
+
+### Spring Security's default auto-configuration lockdown
+- **Why it matters:** Surprises people the first time — you add the starter
+  dependency expecting to configure security later, and instead every
+  endpoint (including ones you meant to leave open) is immediately locked
+  behind HTTP Basic auth with a random password Spring prints to the console
+  on startup.
+- **Takeaway:** The moment `spring-boot-starter-security` is on the classpath
+  with zero explicit config, Spring Boot's auto-configuration applies a
+  default `SecurityFilterChain` that requires authentication for every
+  request. This is a deliberate "secure by default" design choice — better to
+  accidentally lock yourself out than accidentally ship an open API. Adding
+  your own `SecurityFilterChain` bean (as in `SecurityConfig`) fully replaces
+  that default, so you become responsible for explicitly permitting the
+  routes that should be public (`/api/v1/auth/**` here) — miss one and it's
+  silently still open only if you wrote `permitAll()` too broadly, or
+  silently still locked if you forgot to list it at all.
+
+### CSRF protection vs. stateless bearer-token APIs
+- **Why it matters:** Disabling CSRF protection looks alarming out of context
+  ("why are you turning off security?") — being able to justify it precisely
+  is the difference between a shortcut and a deliberate architectural choice.
+- **Takeaway:** CSRF (Cross-Site Request Forgery) attacks exploit the browser
+  automatically attaching **cookies** to requests — a malicious site can
+  trigger a request to your API and the browser rides along with the
+  victim's existing session cookie, without the attacker ever seeing the
+  cookie's value. CSRF protection defends against exactly that ambient-
+  credential scenario. This API is a stateless, JSON-only REST API: no
+  session cookies, and (once Phase 7 lands) auth is a bearer token the
+  client must explicitly attach to an `Authorization` header — something a
+  malicious site cannot make a victim's browser do automatically. With no
+  cookie-based session to ride, CSRF's attack vector doesn't apply, so
+  `csrf(AbstractHttpConfigurer::disable)` is the *correct* call here, not a
+  shortcut. (It would very much *not* be correct for a traditional
+  server-rendered app using session cookies.)
+
+### BCrypt: work factor and why not MD5/SHA for passwords
+- **Why it matters:** "Why not just SHA-256 the password?" is a near-universal
+  interview question once password storage comes up.
+- **Takeaway:** General-purpose hashes like MD5/SHA-256 are built to be
+  **fast** — great for checksums, terrible for passwords, because that same
+  speed lets an attacker with a stolen password-hash database try billions
+  of guesses per second on commodity GPUs. BCrypt (and similarly Argon2,
+  scrypt) is a deliberately **slow, adaptive** hashing algorithm built
+  specifically for password storage: it takes a tunable "work factor"
+  (`strength`, a.k.a. log rounds) where the actual work is `2^strength`
+  iterations — so cost increases *exponentially*, not linearly, as the
+  factor goes up. `new BCryptPasswordEncoder()` (used in this project's
+  `SecurityConfig`) defaults to strength 10 per Spring Security's own
+  Javadoc/source. Spring's own docs recommend tuning the strength so a
+  single verification takes roughly 1 second on your deployment hardware —
+  slow enough to make brute-forcing a stolen hash database impractical,
+  fast enough that one legitimate login doesn't feel slow. BCrypt also
+  automatically generates and embeds a random salt per password, defeating
+  precomputed rainbow-table attacks even before the slowness comes into play.
+
+### TOCTOU race condition + DB unique-constraint defense-in-depth
+- **Why it matters:** A concrete, provable concurrency bug (not a theoretical
+  one) and a demonstration of understanding that application-level checks
+  alone can't guarantee correctness under concurrency.
+- **Takeaway:** "Check if the email exists, then insert" is a classic
+  **Time-Of-Check-To-Time-Of-Use** race: two concurrent registration
+  requests can both pass the `existsByEmail` check (each sees "not taken yet")
+  before either has committed, then both attempt to insert. No amount of
+  application-level Java code checking a value before acting on it can close
+  the timing gap between two separate SQL statements. The actual fix is
+  layered (defense in depth): (1) the app-level `existsByEmail` pre-check
+  gives a fast, clean 409 for the common case — not racing anyone — and (2)
+  the database's own `UNIQUE` constraint on `users.email` is the real,
+  atomic source of truth; the DB guarantees only one of two concurrent
+  INSERTs can succeed, no matter the timing. `AuthService.register()` catches
+  the resulting `DataIntegrityViolationException` from that second INSERT
+  and translates it into the same `DuplicateResourceException` (409) the
+  pre-check throws, so the race case and the common case look identical to
+  the API consumer. Verified with a dedicated unit test
+  (`AuthServiceTest`) that stubs `save()` to throw
+  `DataIntegrityViolationException` directly, simulating the race without
+  needing actual concurrent threads.
+
 ## Spring / Exception Handling
 
 ### `@RestControllerAdvice` and centralised error handling

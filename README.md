@@ -20,13 +20,18 @@ Completed:
 - Repository slice tests using `@DataJpaTest` with Testcontainers (real PostgreSQL)
 - Request/response DTOs with Jakarta Bean Validation
 - Global exception handling (`@RestControllerAdvice`) with unit tests
+- User registration (`AuthService`/`AuthController`) with BCrypt password
+  hashing and duplicate-email prevention (app-level pre-check plus a
+  DB-constraint race backstop), unit tested with Mockito
+- Minimal Spring Security configuration (public auth endpoints, authenticated
+  by default elsewhere)
 
 Upcoming work:
 
-- Authentication and JWT security
+- Login endpoint and JWT-based authentication
 - Account and transaction services
-- REST controllers
-- Service and controller tests
+- REST controllers for accounts and transactions
+- Service and controller tests for accounts/transactions
 - Deployment
 
 ## Tech Stack
