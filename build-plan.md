@@ -249,7 +249,7 @@ Checkpoint:
 
 ## Week 3: Security
 
-## Phase 6: Build Auth Without JWT First
+## Phase 6: Build Auth Without JWT First [COMPLETED]
 
 Goal: understand registration and password hashing before tokens.
 
@@ -277,9 +277,15 @@ Git:
 
 Checkpoint:
 
-- A user can register.
-- Password hash is stored.
-- Duplicate email is rejected.
+- A user can register. [done — verified via `POST /api/v1/auth/register` manual
+  smoke test, 201 with `UserResponse` body]
+- Password hash is stored. [done — verified via `AuthServiceTest` (Mockito,
+  `ArgumentCaptor` on the entity passed to `save()`) and manually via the running
+  app; BCrypt hash confirmed, not plaintext]
+- Duplicate email is rejected. [done — both layers verified: app-level
+  `existsByEmail` pre-check (409, unit-tested + manual smoke test) and the
+  DB-constraint race backstop (`DataIntegrityViolationException` ->
+  `DuplicateResourceException`, unit-tested)]
 
 ## Phase 7: Add Spring Security And JWT
 
