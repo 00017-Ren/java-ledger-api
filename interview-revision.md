@@ -307,6 +307,11 @@ takeaway**.
   shortcut. (It would very much *not* be correct for a traditional
   server-rendered app using session cookies.)
 
+### JWT signing and claim handling
+- **Why it matters:** JWTs are a very common Spring Security interview topic, and interviewers often ask about signing vs encryption and where token data is stored.
+- **Takeaway:** A JWT is signed, not encrypted. Put only non-sensitive claims in it (e.g. user id, role), sign it with an HMAC key, and verify the signature before trusting the claims.
+- **Takeaway:** In jjwt 0.12/0.13, parse signed tokens with `Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload()`. `parserBuilder()` is no longer the current API.
+
 ### BCrypt: work factor and why not MD5/SHA for passwords
 - **Why it matters:** "Why not just SHA-256 the password?" is a near-universal
   interview question once password storage comes up.
