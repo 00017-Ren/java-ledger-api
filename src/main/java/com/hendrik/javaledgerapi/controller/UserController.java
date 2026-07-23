@@ -11,8 +11,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.security.Principal;
-
 @RestController
 @RequestMapping("/api/v1/users")
 public class UserController {
@@ -23,15 +21,12 @@ public class UserController {
         this.userRepository = userRepository;
     }
 
-    // TODO: Replace the temporary Principal parameter with JwtUserPrincipal,
-    // fix the return type to ResponseEntity<UserResponse>, and finish the
-    // /me endpoint wiring in the next session.
     @GetMapping("/me")
-    public ResponseEntity<User> getCurrentUser(
-            @AuthenticationPrincipal JwtUserPrincipal jwtUserPrincipal, Principal principal) {
+    public ResponseEntity<UserResponse> getCurrentUser(
+            @AuthenticationPrincipal JwtUserPrincipal jwtUserPrincipal) {
 
-        User user = userRepository.findById(principal.id())
-                .orElseThrow(() -> new ResourceNotFoundException("User not fond"));
+        User user = userRepository.findById(jwtUserPrincipal.id())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         return ResponseEntity.ok(UserResponse.from(user));
     }
 }
