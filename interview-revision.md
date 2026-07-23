@@ -307,6 +307,11 @@ takeaway**.
   shortcut. (It would very much *not* be correct for a traditional
   server-rendered app using session cookies.)
 
+### JWT signing and claim handling
+- **Why it matters:** JWTs are a very common Spring Security interview topic, and interviewers often ask about signing vs encryption and where token data is stored.
+- **Takeaway:** A JWT is signed, not encrypted. Put only non-sensitive claims in it (e.g. user id, role), sign it with an HMAC key, and verify the signature before trusting the claims.
+- **Takeaway:** In jjwt 0.12/0.13, parse signed tokens with `Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload()`. `parserBuilder()` is no longer the current API.
+
 ### BCrypt: work factor and why not MD5/SHA for passwords
 - **Why it matters:** "Why not just SHA-256 the password?" is a near-universal
   interview question once password storage comes up.
@@ -349,6 +354,62 @@ takeaway**.
   (`AuthServiceTest`) that stubs `save()` to throw
   `DataIntegrityViolationException` directly, simulating the race without
   needing actual concurrent threads.
+
+## Spring Security & Testing
+
+### Jackson 3 Migration in Spring Boot 4
+- **Why it matters:** Spring Boot 4 switched from Jackson 2 (com.fasterxml.jackson)
+  to Jackson 3 (tools.jackson). The auto-configured JSON bean is now a
+  JsonMapper, not an ObjectMapper—an easy gotcha when wiring JSON into
+  security components.
+- **Takeaway:** When injecting JSON serialization into security handlers,
+  use `tools.jackson.databind.json.JsonMapper` (not the old package).
+
+### @WebMvcTest Changes in Spring Boot 4
+- **Why it matters:** Test slices changed. `@WebMvcTest` moved to the
+  `spring-boot.webmvc.test.autoconfigure` module and requires
+  `spring-boot-starter-webmvc-test` (Spring Boot 4 modularized test infra).
+  Interview focus: slice tests vs full integration tests.
+- **Takeaway:** Use `@WebMvcTest` for fast web-layer-only tests and
+  `@SpringBootTest` for slow, full-context tests.
+
+### @AuthenticationPrincipal and SecurityContextHolder
+- **Why it matters:** `@AuthenticationPrincipal` only resolves when the
+  SecurityContext is properly set and the argument resolver is registered.
+  In slice tests (e.g. `@WebMvcTest`) security wiring may be incomplete,
+  leading to a null principal.
+- **Takeaway:** If using standalone MockMvc, add an explicit
+  `new AuthenticationPrincipalArgumentResolver()` via
+  `setCustomArgumentResolvers(...)`.
+
+### User Enumeration Prevention
+- **Why it matters:** Security best practice: attackers should not learn which
+  emails are registered. Login responses must not differ between
+  "unknown email" and "wrong password".
+- **Takeaway:** Return the same HTTP status and message for both cases
+  (e.g. always respond "Invalid email or password" with 401).
+
+### Stateless JWT Authentication
+- **Why it matters:** JWT auth differs from session-based auth: tokens are
+  self-contained, no server-side session store is required, and it scales
+  horizontally. Trade-off: role/permission changes won’t apply until token
+  expiry.
+- **Takeaway:** With `SessionCreationPolicy.STATELESS`, a short token TTL
+  (commonly ~15 minutes) is the standard pattern.
+
+### Spring Boot 4 Modularization
+- **Why it matters:** Boot 4 split test infrastructure into separate starters
+  (e.g. `spring-boot-starter-webmvc-test`, `spring-boot-starter-security-test`).
+  Missing starters is a common upgrade failure mode.
+- **Takeaway:** On Boot 4 upgrades, verify you added the right test starters
+  for the slices you use.
+
+### Slice Testing vs Integration Testing
+- **Why it matters:** `@WebMvcTest` loads only the web layer (controllers and
+  relevant MVC/security components); `@SpringBootTest` loads the full
+  application context.
+- **Takeaway:** Prefer slices for fast feedback on isolated components, and
+  integration tests for end-to-end behavior across layers.
 
 ## Spring / Exception Handling
 

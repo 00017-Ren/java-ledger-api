@@ -6,14 +6,14 @@ This plan is for building `java-ledger-api` as a learning-focused portfolio proj
 
 Target: complete the project in 6 weeks. The 13 phases are grouped by week below. Weeks 3 and 4 are the hardest (Security/JWT and money-movement/transactions) and have deliberately been given more room. If something slips, expect it to slip there. Do not let Week 5 (tests) get squeezed.
 
-| Week | Theme | Phases |
-| ---- | ----- | ------ |
+| Week | Theme | Phases                       |
+| ---- | ----- |------------------------------|
 | 1 | Data layer: foundation, entities, repositories | 1 (done), 2 (done), 3 (done) |
-| 2 | API contract: DTOs/validation and exception handling | 4 (done), 5 |
-| 3 | Security: auth basics then Spring Security + JWT (hardest week) | 6, 7 |
-| 4 | Domain logic: accounts then transactions (portfolio centrepiece) | 8, 9 |
-| 5 | Quality: tests then API documentation | 10, 11 |
-| 6 | Ship it: Dockerize then deploy | 12, 13 |
+| 2 | API contract: DTOs/validation and exception handling | 4 (done), 5 (done)           |
+| 3 | Security: auth basics then Spring Security + JWT (hardest week) | 6 (done), 7 (done)           |
+| 4 | Domain logic: accounts then transactions (portfolio centrepiece) | 8, 9                         |
+| 5 | Quality: tests then API documentation | 10, 11                       |
+| 6 | Ship it: Dockerize then deploy | 12, 13                       |
 
 ## Git Workflow (team-style)
 
@@ -287,7 +287,7 @@ Checkpoint:
   DB-constraint race backstop (`DataIntegrityViolationException` ->
   `DuplicateResourceException`, unit-tested)]
 
-## Phase 7: Add Spring Security And JWT
+## Phase 7: Add Spring Security And JWT [COMPLETED]
 
 Goal: secure the API properly.
 

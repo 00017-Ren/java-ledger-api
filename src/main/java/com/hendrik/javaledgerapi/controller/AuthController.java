@@ -1,6 +1,8 @@
 package com.hendrik.javaledgerapi.controller;
 
+import com.hendrik.javaledgerapi.dto.request.LoginRequest;
 import com.hendrik.javaledgerapi.dto.request.RegisterRequest;
+import com.hendrik.javaledgerapi.dto.response.AuthResponse;
 import com.hendrik.javaledgerapi.dto.response.UserResponse;
 import com.hendrik.javaledgerapi.service.AuthService;
 import jakarta.validation.Valid;
@@ -25,5 +27,11 @@ public class AuthController {
     public ResponseEntity<UserResponse> register(@Valid @RequestBody RegisterRequest request) {
         UserResponse response = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+        AuthResponse response = authService.login(request);
+        return ResponseEntity.ok(response);
     }
 }
