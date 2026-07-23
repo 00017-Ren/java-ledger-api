@@ -1,6 +1,6 @@
 package com.hendrik.javaledgerapi.security;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import com.hendrik.javaledgerapi.dto.response.ErrorResponse;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,10 +16,10 @@ import java.time.LocalDateTime;
 @Component
 public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
-    private final ObjectMapper objectMapper;
+    private final JsonMapper jsonMapper;
 
-    public JwtAuthenticationEntryPoint(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
+    public JwtAuthenticationEntryPoint(JsonMapper jsonMapper) {
+        this.jsonMapper = jsonMapper;
     }
 
     @Override
@@ -37,6 +37,6 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
                 request.getRequestURI()
         );
 
-        response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
+        response.getWriter().write(jsonMapper.writeValueAsString(errorResponse));
     }
 }
