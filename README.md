@@ -25,10 +25,10 @@ Completed:
   DB-constraint race backstop), unit tested with Mockito
 - Minimal Spring Security configuration (public auth endpoints, authenticated
   by default elsewhere)
+- Login endpoint and JWT-based authentication
 
 Upcoming work:
 
-- Login endpoint and JWT-based authentication
 - Account and transaction services
 - REST controllers for accounts and transactions
 - Service and controller tests for accounts/transactions
