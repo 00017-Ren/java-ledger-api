@@ -1,6 +1,7 @@
 package com.hendrik.javaledgerapi.service;
 
 import com.hendrik.javaledgerapi.dto.response.AccountResponse;
+import com.hendrik.javaledgerapi.dto.response.BalanceResponse;
 import com.hendrik.javaledgerapi.exception.ResourceNotFoundException;
 import com.hendrik.javaledgerapi.model.Account;
 import com.hendrik.javaledgerapi.model.User;
@@ -73,6 +74,17 @@ public class AccountService {
 
         if (userId.equals(account.getUser().getId())) {
             return AccountResponse.from(account);
+        }
+
+        throw new ResourceNotFoundException("Account not found");
+    }
+
+    public BalanceResponse getAccountBalance(UUID accountId, UUID userId) {
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
+
+        if (userId.equals(account.getUser().getId())) {
+            return BalanceResponse.from(account);
         }
 
         throw new ResourceNotFoundException("Account not found");
