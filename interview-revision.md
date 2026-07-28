@@ -547,3 +547,38 @@ takeaway**.
   staging area back to "modified/untracked" **without deleting your changes**.
   The older equivalent is `git reset HEAD <file>`. Neither touches your actual
   file contents.
+
+## Account Logic & Service Layer (Phase 8)
+
+### ThreadLocalRandom vs Random vs SecureRandom
+- **Why it matters:** Choosing the right RNG affects security and performance — interviewers probe understanding here.
+- **Takeaway:** `Random` / `new Random()` defaults to sharing one instance (contention if used concurrently). `ThreadLocalRandom.current()` gives each thread its own instance, faster and less contention. **`SecureRandom`** is cryptographically strong (slow) for security-critical values like tokens/passwords. For non-security randomness (like account number generation), use `ThreadLocalRandom`. For tokens/passwords, use `SecureRandom`.
+
+### Defense-in-depth: app-level uniqueness check + DB constraint
+- **Why it matters:** A proven pattern for critical data — guarantees correctness even under race conditions.
+- **Takeaway:** Generate account numbers with `ThreadLocalRandom`, check `existsByAccountNumber()` in the app to give a fast, clean error, *and* rely on the database's `UNIQUE` constraint as the atomic source of truth. Two independent mechanisms mean one alone failing (e.g. a race in the app check) is caught by the other. The `AccountNumberGenerator` retries 3 times before giving up; if even that fails, something is genuinely broken (collision is astronomically unlikely on a 12-digit space).
+
+### Service-layer authorization and 404 vs 403
+- **Why it matters:** Security best practice that costs nothing — prevents account enumeration attacks.
+- **Takeaway:** When a user tries to access a resource they don't own, return `404 Not Found` (same as "doesn't exist"), not `403 Forbidden` (same as "you're not allowed to see it"). An attacker probing for accounts can't distinguish between "account exists but you don't own it" and "account doesn't exist" — both return the same 404. Code path: service layer loads the account, checks ownership, throws `ResourceNotFoundException` in both cases.
+
+### Singleton beans must not hold per-request state
+- **Why it matters:** A concurrency bug source and a common gotcha when learning Spring.
+- **Takeaway:** Spring services are singleton-scoped (one instance reused for every request). Storing per-request data in instance fields (e.g. `private Account account`) causes concurrent requests to interfere with each other. Inject only dependencies that last the bean's lifetime (repositories, generators, other services). Per-request values (like the account being created in this request) must be local variables, scoped to the method.
+
+### DTO conversion with static factory methods
+- **Why it matters:** Keeps data-layer details hidden; a clean separation of concerns.
+- **Takeaway:** Use a static `from(Entity)` factory method on the response DTO to convert JPA entities into API responses. This keeps the conversion logic in one place, the response DTO "owns" how it's built from an entity, and callers just call `.from()` without manually extracting fields. Example: `AccountResponse.from(account)` replaces scattered `new AccountResponse(account.getId(), account.getBalance(), ...)` calls.
+
+### Service method signatures: userId vs authenticated principal
+- **Why it matters:** Clarifies the boundary between controller and service layers.
+- **Takeaway:** The controller extracts `userId` from the authenticated principal and passes it as a plain parameter to the service. The service never knows about Spring Security; it just receives a UUID. This makes the service logic testable without a Spring context and independently callable from anywhere (CLI, scheduled job, etc.). The principal extraction belongs in the controller, the authorization check belongs in the service.
+
+### Controller response status codes and Location headers
+- **Why it matters:** REST convention; expected by API clients and standards-checkers.
+- **Takeaway:** `POST` (create) returns `201 Created` with a `Location` header pointing to the new resource (e.g. `Location: /api/v1/accounts/{id}`). `GET` returns `200 OK`. Use `ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(id).toUri()` to dynamically build the location URI; this is cleaner than hardcoding the path template.
+
+### GlobalExceptionHandler for parameter binding errors
+- **Why it matters:** Bad input (malformed UUIDs, invalid JSON) must return a consistent 400 response, not a default framework error page.
+- **Takeaway:** Add `@ExceptionHandler(MethodArgumentTypeMismatchException.class)` to catch path variable binding failures (e.g. `GET /accounts/not-a-uuid` when `@PathVariable UUID id` expects a UUID). Return `400 Bad Request` with the standard `ErrorResponse` structure. This handler centralizes error shaping and prevents the controller from needing try/catch blocks.
+
