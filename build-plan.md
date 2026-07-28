@@ -11,7 +11,7 @@ Target: complete the project in 6 weeks. The 13 phases are grouped by week below
 | 1 | Data layer: foundation, entities, repositories | 1 (done), 2 (done), 3 (done) |
 | 2 | API contract: DTOs/validation and exception handling | 4 (done), 5 (done)           |
 | 3 | Security: auth basics then Spring Security + JWT (hardest week) | 6 (done), 7 (done)           |
-| 4 | Domain logic: accounts then transactions (portfolio centrepiece) | 8, 9                         |
+| 4 | Domain logic: accounts then transactions (portfolio centrepiece) | 8 (done), 9                  |
 | 5 | Quality: tests then API documentation | 10, 11                       |
 | 6 | Ship it: Dockerize then deploy | 12, 13                       |
 
@@ -327,7 +327,7 @@ Checkpoint:
 
 ## Week 4: Domain Logic
 
-## Phase 8: Build Account Logic
+## Phase 8: Build Account Logic [COMPLETE]
 
 Goal: allow users to create and view accounts.
 
