@@ -6,7 +6,7 @@ The project models a simple banking-style ledger where users can register, creat
 
 ## Project Status
 
-In progress.
+In progress. Current phase: Phase 9, transaction logic.
 
 Completed:
 
@@ -26,12 +26,18 @@ Completed:
 - Minimal Spring Security configuration (public auth endpoints, authenticated
   by default elsewhere)
 - Login endpoint and JWT-based authentication
+- Account service and secured account endpoints for creating, listing, viewing,
+  and retrieving balances for the authenticated user's accounts
+- Account service and controller tests, including ownership checks and invalid
+  account identifiers
 
 Upcoming work:
 
-- Account and transaction services
-- REST controllers for accounts and transactions
-- Service and controller tests for accounts/transactions
+- Transaction service for deposits and transfers
+- REST controllers for deposits, transfers, and transaction history
+- Transaction service and controller tests, including failed-transfer and
+  optimistic-locking behavior
+- API documentation improvements
 - Deployment
 
 ## Tech Stack
@@ -51,20 +57,23 @@ Upcoming work:
 
 ## Core Features
 
-Planned features:
+Implemented features:
 
 - User registration and login
 - JWT-based authentication
-- Role-based access control with `USER` and `ADMIN`
 - Account creation
-- Account balance tracking
+- Account listing, ownership-protected lookup, and balance retrieval
+- Global error handling
+- Automated repository, service, controller, security, and DTO tests
+
+Remaining features:
+
+- Role-based access control with `USER` and `ADMIN`
 - Admin-only deposits
 - Transfers between accounts
 - Transaction history with pagination
 - Optimistic locking for safer concurrent balance updates
-- Global error handling
-- Swagger/OpenAPI documentation
-- Automated tests for service and API behavior
+- OpenAPI descriptions and examples
 
 ## Domain Model
 
@@ -78,20 +87,20 @@ Money values use `DECIMAL(19,4)` in PostgreSQL and should be represented with `B
 
 ## API Design
 
-Planned endpoints:
+Endpoints:
 
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/api/v1/auth/register` | Register a new user |
-| POST | `/api/v1/auth/login` | Log in and receive JWT |
-| POST | `/api/v1/accounts` | Create an account |
-| GET | `/api/v1/accounts` | List accounts for the authenticated user |
-| GET | `/api/v1/accounts/{id}` | Get account details |
-| GET | `/api/v1/accounts/{id}/balance` | Get account balance |
-| POST | `/api/v1/transactions/deposit` | Admin deposit into an account |
-| POST | `/api/v1/transactions/transfer` | Transfer money between accounts |
-| GET | `/api/v1/transactions` | View paginated transaction history |
-| GET | `/api/v1/transactions/{id}` | View a single transaction |
+| Method | Endpoint | Description | Status |
+|---|---|---|---|
+| POST | `/api/v1/auth/register` | Register a new user | Implemented |
+| POST | `/api/v1/auth/login` | Log in and receive JWT | Implemented |
+| POST | `/api/v1/accounts` | Create an account | Implemented |
+| GET | `/api/v1/accounts` | List accounts for the authenticated user | Implemented |
+| GET | `/api/v1/accounts/{id}` | Get account details | Implemented |
+| GET | `/api/v1/accounts/{id}/balance` | Get account balance | Implemented |
+| POST | `/api/v1/transactions/deposit` | Admin deposit into an account | Planned |
+| POST | `/api/v1/transactions/transfer` | Transfer money between accounts | Planned |
+| GET | `/api/v1/transactions` | View paginated transaction history | Planned |
+| GET | `/api/v1/transactions/{id}` | View a single transaction | Planned |
 
 ## Local Development
 

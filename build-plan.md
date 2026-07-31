@@ -31,7 +31,7 @@ Each phase section lists a suggested branch and example commit messages. Treat t
 
 ## Current Project State
 
-Completed foundation:
+Completed:
 
 - Maven-based Spring Boot project
 - Java 25 configuration
@@ -45,17 +45,22 @@ Completed foundation:
 - Repository layer with Testcontainers-backed slice tests (Phase 3 complete)
 - Request/response DTOs with bean validation, tested via standalone `Validator`
   unit tests (Phase 4 complete)
+- Global exception handling with unit tests (Phase 5 complete)
+- User registration with BCrypt password hashing and duplicate-email handling
+  (Phase 6 complete)
+- Login, JWT authentication, and stateless Spring Security configuration
+  (Phase 7 complete)
+- Account service and authenticated account endpoints for creation, listing,
+  ownership-protected lookup, and balance retrieval (Phase 8 complete)
+- Account service and controller tests, plus JWT service and filter tests
 
 Not built yet:
 
-- Service layer
-- Controllers
-- Security configuration
-- JWT authentication flow
-- Global exception handling
-- Real tests beyond the context load test and DTO/repository unit tests
-- Dockerfile and full app containerization
-- Deployment
+- Transaction service for deposits and transfers
+- Transaction controllers and transaction-history endpoints
+- Transaction service/controller tests, including rollback and optimistic-locking
+  behavior
+- Improved API documentation, containerization, and deployment
 
 ## Week 1: Data Layer
 
@@ -298,8 +303,9 @@ Implement:
 - JWT validation filter.
 - Security configuration.
 - Public auth endpoints.
-- Protected account and transaction endpoints.
-- Role checks for admin-only actions.
+- Protected account endpoints.
+- Role checks for admin-only transaction actions when those endpoints are added
+  in Phase 9.
 
 Learn:
 
@@ -322,12 +328,11 @@ Git:
 Checkpoint:
 
 - Public endpoints work without token.
-- Protected endpoints require token.
-- Admin-only deposit rejects normal users.
+- Account endpoints require a valid token.
 
 ## Week 4: Domain Logic
 
-## Phase 8: Build Account Logic [COMPLETE]
+## Phase 8: Build Account Logic [COMPLETED]
 
 Goal: allow users to create and view accounts.
 
@@ -356,7 +361,7 @@ Git:
 
 Checkpoint:
 
-- A logged-in user can manage only their own accounts.
+- A logged-in user can manage only their own accounts. [done]
 
 ## Phase 9: Build Transaction Logic
 
@@ -409,38 +414,34 @@ Checkpoint:
 
 Goal: prove the important behavior works.
 
-Start with service tests:
+Existing tests cover registration, JWT handling, account creation, account
+ownership checks, and basic controller behavior. Extend coverage with:
 
-- Register user.
-- Reject duplicate user.
-- Create account.
 - Deposit funds.
 - Transfer funds.
 - Reject insufficient funds.
 - Reject transfer to same account.
-- Reject unauthorized account access.
 
 Then add API/controller tests:
 
 - Unauthorized request returns `401`.
 - Invalid request returns `400`.
-- User cannot access another user's account.
 - Admin can deposit.
+- User cannot access another user's transaction history.
 
 Learn:
 
 - Unit tests vs integration tests.
 - Mocking repositories and services.
 - Spring Boot test slices.
-- Testcontainers later if you want stronger PostgreSQL integration.
+- Testcontainers for high-fidelity PostgreSQL integration tests.
 
 Git:
 
 - Branch: `test/service-and-controller-tests`
 - Example commits:
-  - `test: add registration and account service tests`
   - `test: add transfer and insufficient-funds tests`
-  - `test: add controller auth and validation tests`
+  - `test: add transaction controller authorization and validation tests`
 - PR title: "Add service and controller tests".
 
 Checkpoint:

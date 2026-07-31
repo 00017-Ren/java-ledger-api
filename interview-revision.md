@@ -217,6 +217,17 @@ takeaway**.
   you have 3+ distinct domains. For a small portfolio project, by-layer is fine —
    but knowing *why* and *when* to switch is the real interview signal.
 
+### Cost-aware model routing for coding agents
+- **Why it matters:** The same quality/cost/latency tradeoff appears in system
+  design beyond AI. It shows deliberate engineering rather than applying the
+  most expensive resource to every task.
+- **Takeaway:** Route bounded, low-risk work such as repository exploration,
+  source research, and documentation maintenance to a fast low-cost model.
+  Reserve high-reasoning, long-context models for design, debugging, and money
+  movement; use an independent model for code review to reduce correlated
+  blind spots. Measure actual token usage and task outcomes, not only list
+  price, then adjust the routing.
+
 ## Spring / Dependency Injection & Service Layer
 
 ### Constructor injection vs. field injection
