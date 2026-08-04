@@ -1,9 +1,15 @@
 package com.hendrik.javaledgerapi.service;
 
 import com.hendrik.javaledgerapi.dto.request.TransferRequest;
+import com.hendrik.javaledgerapi.dto.response.TransactionResponse;
 import com.hendrik.javaledgerapi.exception.InsufficientFundsException;
+import com.hendrik.javaledgerapi.exception.InvalidTransferException;
+import com.hendrik.javaledgerapi.exception.ResourceNotFoundException;
 import com.hendrik.javaledgerapi.model.Account;
+import com.hendrik.javaledgerapi.model.Transaction;
 import com.hendrik.javaledgerapi.model.User;
+import com.hendrik.javaledgerapi.model.enums.TransactionStatus;
+import com.hendrik.javaledgerapi.model.enums.TransactionType;
 import com.hendrik.javaledgerapi.repository.AccountRepository;
 import com.hendrik.javaledgerapi.repository.TransactionRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,6 +25,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static com.hendrik.javaledgerapi.model.enums.Role.USER;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -38,14 +45,15 @@ class TransactionServiceTest {
     private UUID destinationAccountId;
     private UUID userId;
     private UUID userId2;
-    private User testUser =  new User();
-    private User testUser2 =  new User();
+    private User testUser = new User();
+    private User testUser2 = new User();
     private Account sourceAccount = new Account();
     private Account destinationAccount = new Account();
 
     @BeforeEach
     void setUp() {
         userId = UUID.randomUUID();
+        userId2 = UUID.randomUUID();
         sourceAccountId = UUID.randomUUID();
         destinationAccountId = UUID.randomUUID();
 
@@ -66,8 +74,6 @@ class TransactionServiceTest {
                 LocalDateTime.now(),
                 LocalDateTime.now()
         );
-
-
 
         sourceAccountId = UUID.randomUUID();
         sourceAccount = new Account(
@@ -94,7 +100,6 @@ class TransactionServiceTest {
         );
     }
 
-
     @Test
     void transfer_throwInsufficientFundsException_whenAccountBalanceInsufficient() {
         TransferRequest request = new TransferRequest(
@@ -106,12 +111,115 @@ class TransactionServiceTest {
         when(accountRepository.findByAccountNumber(request.sourceAccountNumber())).thenReturn(Optional.of(sourceAccount));
         when(accountRepository.findByAccountNumber(request.destinationAccountNumber())).thenReturn(Optional.of(destinationAccount));
 
-        //TransactionResponse response = transactionService.transfer(userId, request);
-
         assertThatThrownBy(() -> transactionService.transfer(userId, request))
-            .isInstanceOf(InsufficientFundsException.class);
+                .isInstanceOf(InsufficientFundsException.class);
 
         verify(accountRepository, never()).save(any());
         verify(transactionRepository, never()).save(any());
     }
+
+    @Test
+    void transfer_throwInvalidTransferException_whenUserTransfersToOwnAccount() {
+        TransferRequest request = new TransferRequest(
+                sourceAccount.getAccountNumber(),
+                sourceAccount.getAccountNumber(),
+                BigDecimal.TEN,
+                "transfer"
+        );
+
+        assertThatThrownBy(() -> transactionService.transfer(userId, request))
+                .isInstanceOf(InvalidTransferException.class);
+
+        verify(accountRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
+    void transfer_throws404_whenWrongOwnerForSourceAccount() {
+        TransferRequest request = new TransferRequest(
+                sourceAccount.getAccountNumber(),
+                destinationAccount.getAccountNumber(),
+                BigDecimal.TEN,
+                "transfer"
+        );
+
+        when(accountRepository.findByAccountNumber(request.sourceAccountNumber())).thenReturn(Optional.of(sourceAccount));
+
+        assertThatThrownBy(() -> transactionService.transfer(userId2, request))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        verify(accountRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
+    void transfer_throws404_whenDestinationAccountMissing() {
+        TransferRequest request = new TransferRequest(
+                sourceAccount.getAccountNumber(),
+                null,
+                BigDecimal.TEN,
+                "transfer"
+        );
+
+        assertThatThrownBy(() -> transactionService.transfer(userId, request))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        verify(accountRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
+    void transfer_throwsInvalidTransferException_whenCurrencyMismatchOnAccounts() {
+        destinationAccount.setCurrency("USD");
+        TransferRequest request = new TransferRequest(
+                sourceAccount.getAccountNumber(),
+                destinationAccount.getAccountNumber(),
+                BigDecimal.TEN,
+                "transfer"
+        );
+
+        when(accountRepository.findByAccountNumber(request.sourceAccountNumber())).thenReturn(Optional.of(sourceAccount));
+        when(accountRepository.findByAccountNumber(request.destinationAccountNumber())).thenReturn(Optional.of(destinationAccount));
+
+        assertThatThrownBy(() -> transactionService.transfer(userId, request))
+                .isInstanceOf(InvalidTransferException.class);
+
+        verify(accountRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
+    void transfer_returnsTransferResponse_whenTransferRequestValid() {
+        sourceAccount.setBalance(BigDecimal.TEN);
+
+        TransferRequest request = new TransferRequest(
+                sourceAccount.getAccountNumber(),
+                destinationAccount.getAccountNumber(),
+                BigDecimal.TWO,
+                "transfer"
+        );
+
+        Transaction transaction = new Transaction(
+                UUID.randomUUID(),
+                sourceAccount,
+                destinationAccount,
+                BigDecimal.TWO,
+                TransactionType.TRANSFER,
+                TransactionStatus.COMPLETED,
+                "transfer",
+                LocalDateTime.now()
+        );
+
+        when(accountRepository.findByAccountNumber(request.sourceAccountNumber())).thenReturn(Optional.of(sourceAccount));
+        when(accountRepository.findByAccountNumber(request.destinationAccountNumber())).thenReturn(Optional.of(destinationAccount));
+        when(transactionRepository.save(any())).thenReturn(transaction);
+
+        TransactionResponse response = transactionService.transfer(userId, request);
+
+        assertThat(sourceAccount.getBalance()).isEqualTo(BigDecimal.valueOf(8));
+        assertThat(destinationAccount.getBalance()).isEqualTo(BigDecimal.TWO);
+
+        verify(transactionRepository, times(1)).save(any());
+    }
+
 }
