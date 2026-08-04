@@ -1,13 +1,16 @@
 package com.hendrik.javaledgerapi.service;
 
+import com.hendrik.javaledgerapi.dto.request.DepositRequest;
 import com.hendrik.javaledgerapi.dto.request.TransferRequest;
 import com.hendrik.javaledgerapi.dto.response.TransactionResponse;
 import com.hendrik.javaledgerapi.exception.InsufficientFundsException;
 import com.hendrik.javaledgerapi.exception.InvalidTransferException;
 import com.hendrik.javaledgerapi.exception.ResourceNotFoundException;
+import com.hendrik.javaledgerapi.exception.UnauthorizedAccessException;
 import com.hendrik.javaledgerapi.model.Account;
 import com.hendrik.javaledgerapi.model.Transaction;
 import com.hendrik.javaledgerapi.model.User;
+import com.hendrik.javaledgerapi.model.enums.Role;
 import com.hendrik.javaledgerapi.model.enums.TransactionStatus;
 import com.hendrik.javaledgerapi.model.enums.TransactionType;
 import com.hendrik.javaledgerapi.repository.AccountRepository;
@@ -24,6 +27,7 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.hendrik.javaledgerapi.model.enums.Role.ADMIN;
 import static com.hendrik.javaledgerapi.model.enums.Role.USER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -49,6 +53,7 @@ class TransactionServiceTest {
     private User testUser2 = new User();
     private Account sourceAccount = new Account();
     private Account destinationAccount = new Account();
+    private Role callerRole;
 
     @BeforeEach
     void setUp() {
@@ -222,4 +227,78 @@ class TransactionServiceTest {
         verify(transactionRepository, times(1)).save(any());
     }
 
+    @Test
+    void deposit_throwsUnauthorizedException_whenCallerRoleNotAdmin() {
+        callerRole = USER;
+
+        DepositRequest request = new DepositRequest(
+                destinationAccount.getAccountNumber(),
+                BigDecimal.TEN,
+                "deposit"
+        );
+
+        Transaction transaction = new Transaction(
+                UUID.randomUUID(),
+                null,
+                destinationAccount,
+                BigDecimal.TEN,
+                TransactionType.DEPOSIT,
+                TransactionStatus.COMPLETED,
+                "deposit",
+                LocalDateTime.now()
+        );
+
+        assertThatThrownBy(() -> transactionService.deposit(callerRole, request))
+                .isInstanceOf(UnauthorizedAccessException.class);
+
+        verify(accountRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
+    void deposit_throws404_whenDestinationAccountMissing() {
+        callerRole = ADMIN;
+
+        DepositRequest request = new DepositRequest(
+                null,
+                BigDecimal.TEN,
+                "deposit"
+        );
+
+        assertThatThrownBy(() -> transactionService.deposit(callerRole, request))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        verify(accountRepository, never()).save(any());
+        verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
+    void deposit_returnsTranactionResponse_whenDepositRequestValid() {
+        callerRole  = ADMIN;
+        DepositRequest request = new DepositRequest(
+                destinationAccount.getAccountNumber(),
+                BigDecimal.TEN,
+                "deposit"
+        );
+
+        Transaction transaction = new Transaction(
+                UUID.randomUUID(),
+                null,
+                destinationAccount,
+                BigDecimal.TEN,
+                TransactionType.DEPOSIT,
+                TransactionStatus.COMPLETED,
+                "deposit",
+                LocalDateTime.now()
+        );
+
+        when(accountRepository.findByAccountNumber(request.destinationAccountNumber())).thenReturn(Optional.of(destinationAccount));
+        when(transactionRepository.save(any())).thenReturn(transaction);
+
+        TransactionResponse response = transactionService.deposit(callerRole, request);
+
+        assertThat(response.type()).isEqualTo(TransactionType.DEPOSIT);
+        assertThat(destinationAccount.getBalance()).isEqualTo(BigDecimal.TEN);
+        verify(transactionRepository, times(1)).save(any());
+    }
 }
