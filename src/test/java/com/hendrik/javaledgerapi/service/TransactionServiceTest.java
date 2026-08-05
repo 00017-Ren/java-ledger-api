@@ -21,9 +21,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -166,6 +172,8 @@ class TransactionServiceTest {
                 "transfer"
         );
 
+        when(accountRepository.findByAccountNumber(request.sourceAccountNumber())).thenReturn(Optional.of(sourceAccount));
+
         assertThatThrownBy(() -> transactionService.transfer(userId, request))
                 .isInstanceOf(ResourceNotFoundException.class);
 
@@ -273,8 +281,8 @@ class TransactionServiceTest {
     }
 
     @Test
-    void deposit_returnsTranactionResponse_whenDepositRequestValid() {
-        callerRole  = ADMIN;
+    void deposit_returnsTransactionResponse_whenDepositRequestValid() {
+        callerRole = ADMIN;
         DepositRequest request = new DepositRequest(
                 destinationAccount.getAccountNumber(),
                 BigDecimal.TEN,
@@ -300,5 +308,187 @@ class TransactionServiceTest {
         assertThat(response.type()).isEqualTo(TransactionType.DEPOSIT);
         assertThat(destinationAccount.getBalance()).isEqualTo(BigDecimal.TEN);
         verify(transactionRepository, times(1)).save(any());
+    }
+
+    @Test
+    void accountHistory_returnsPaginatedTransactionResponse_whenAccountHistoryRequestValid() {
+        Pageable pageable = PageRequest.of(0, 20);
+
+        Page<Transaction> transactionPage = new PageImpl<>(
+                List.of(new Transaction(
+                        UUID.randomUUID(),
+                        sourceAccount,
+                        destinationAccount,
+                        BigDecimal.TEN,
+                        TransactionType.TRANSFER,
+                        TransactionStatus.COMPLETED,
+                        "test history",
+                        LocalDateTime.now()
+                )),
+                pageable,
+                1);
+
+        when(accountRepository.findById(sourceAccountId)).thenReturn(Optional.of(sourceAccount));
+        when(transactionRepository.findByAccountId(sourceAccountId, pageable)).thenReturn(transactionPage);
+
+        Page<TransactionResponse> response = transactionService.getAccountHistory(sourceAccountId, userId, pageable);
+
+        assertThat(response.getContent())
+                .singleElement()
+                .satisfies(transactionResponse -> {
+                    assertThat(transactionResponse.sourceAccountNumber()).isEqualTo(sourceAccount.getAccountNumber());
+                    assertThat(transactionResponse.destinationAccountNumber()).isEqualTo(destinationAccount.getAccountNumber());
+                    assertThat(transactionResponse.amount()).isEqualTo(BigDecimal.TEN);
+                    assertThat(transactionResponse.type()).isEqualTo(TransactionType.TRANSFER);
+                    assertThat(transactionResponse.status()).isEqualTo(TransactionStatus.COMPLETED);
+                    assertThat(transactionResponse.description()).isEqualTo("test history");
+                });
+
+        assertThat(response.getTotalElements()).isEqualTo(1);
+        assertThat(response.getTotalPages()).isEqualTo(1);
+        assertThat(response.getNumber()).isEqualTo(0);
+        assertThat(response.getSize()).isEqualTo(20);
+        assertThat(response.getNumberOfElements()).isEqualTo(1);
+
+        verify(transactionRepository, times(1)).findByAccountId(sourceAccountId, pageable);
+    }
+
+    @Test
+    void getAccountHistory_throws404_whenWrongAccountOwnerPassed() {
+        Pageable pageable = PageRequest.of(0, 20);
+
+        Page<Transaction> transactionPage = new PageImpl<>(
+                List.of(new Transaction(
+                        UUID.randomUUID(),
+                        sourceAccount,
+                        destinationAccount,
+                        BigDecimal.TEN,
+                        TransactionType.TRANSFER,
+                        TransactionStatus.COMPLETED,
+                        "test history",
+                        LocalDateTime.now()
+                )),
+                pageable,
+                1);
+
+        when(accountRepository.findById(sourceAccountId)).thenReturn(Optional.of(sourceAccount));
+
+        assertThatThrownBy(() -> transactionService.getAccountHistory(sourceAccountId, userId2, pageable))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void getTransaction_returnsTransactionResponse_whenValidSourceAccountOwner() {
+        Transaction transaction = new Transaction(
+                UUID.randomUUID(),
+                sourceAccount,
+                null,
+                BigDecimal.TEN,
+                TransactionType.DEPOSIT,
+                TransactionStatus.COMPLETED,
+                "deposit",
+                LocalDateTime.now()
+        );
+
+        when(transactionRepository.findById(sourceAccountId)).thenReturn(Optional.of(transaction));
+
+        TransactionResponse response = transactionService.getTransactionById(sourceAccountId, userId);
+
+        assertThat(response.sourceAccountNumber()).isEqualTo(sourceAccount.getAccountNumber());
+        assertThat(response.destinationAccountNumber()).isEqualTo(null);
+        assertThat(response.amount()).isEqualTo(BigDecimal.TEN);
+        assertThat(response.type()).isEqualTo(TransactionType.DEPOSIT);
+        assertThat(response.status()).isEqualTo(TransactionStatus.COMPLETED);
+        assertThat(response.description()).isEqualTo("deposit");
+
+        verify(transactionRepository, times(1)).findById(sourceAccountId);
+    }
+
+    @Test
+    void getTransaction_returnsTransactionResponse_whenValidDestinationAccountOwner() {
+        Transaction transaction = new Transaction(
+                UUID.randomUUID(),
+                null,
+                destinationAccount,
+                BigDecimal.TEN,
+                TransactionType.DEPOSIT,
+                TransactionStatus.COMPLETED,
+                "deposit",
+                LocalDateTime.now()
+        );
+
+        when(transactionRepository.findById(destinationAccountId)).thenReturn(Optional.of(transaction));
+
+        TransactionResponse response = transactionService.getTransactionById(destinationAccountId, userId2);
+
+        assertThat(response.sourceAccountNumber()).isEqualTo(null);
+        assertThat(response.destinationAccountNumber()).isEqualTo(destinationAccount.getAccountNumber());
+        assertThat(response.amount()).isEqualTo(BigDecimal.TEN);
+        assertThat(response.type()).isEqualTo(TransactionType.DEPOSIT);
+        assertThat(response.status()).isEqualTo(TransactionStatus.COMPLETED);
+        assertThat(response.description()).isEqualTo("deposit");
+
+        verify(transactionRepository, times(1)).findById(destinationAccountId);
+    }
+
+    @Test
+    void getTransaction_throws404_whenWrongAccountOwnerPassed() {
+        User wrongUser = new User(
+                UUID.randomUUID(),
+                "test@mail.com",
+                "000000",
+                USER,
+                LocalDateTime.now(),
+                LocalDateTime.now()
+        );
+
+        Transaction transaction = new Transaction(
+                UUID.randomUUID(),
+                null,
+                destinationAccount,
+                BigDecimal.TEN,
+                TransactionType.DEPOSIT,
+                TransactionStatus.COMPLETED,
+                "deposit",
+                LocalDateTime.now()
+        );
+
+        when(transactionRepository.findById(destinationAccountId)).thenReturn(Optional.of(transaction));
+
+        assertThatThrownBy(() -> transactionService.getTransactionById(destinationAccountId, wrongUser.getId()))
+                .isInstanceOf(ResourceNotFoundException.class);
+        verify(transactionRepository, times(1)).findById(destinationAccountId);
+    }
+
+    @Test
+    void transfer_throwsUncaught409_whenOptimisticLockFailed() {
+        sourceAccount.setBalance(BigDecimal.TEN);
+
+        TransferRequest request = new TransferRequest(
+                sourceAccount.getAccountNumber(),
+                destinationAccount.getAccountNumber(),
+                BigDecimal.TWO,
+                "transfer"
+        );
+
+        Transaction transaction = new Transaction(
+                UUID.randomUUID(),
+                sourceAccount,
+                destinationAccount,
+                BigDecimal.TWO,
+                TransactionType.TRANSFER,
+                TransactionStatus.COMPLETED,
+                "transfer",
+                LocalDateTime.now()
+        );
+
+        when(accountRepository.findByAccountNumber(request.sourceAccountNumber())).thenReturn(Optional.of(sourceAccount));
+        when(accountRepository.findByAccountNumber(request.destinationAccountNumber())).thenReturn(Optional.of(destinationAccount));
+        when(accountRepository.save(sourceAccount)).thenThrow(ObjectOptimisticLockingFailureException.class);
+
+        assertThatThrownBy(() -> transactionService.transfer(userId,request))
+                .isInstanceOf(ObjectOptimisticLockingFailureException.class);
+
+        verify(transactionRepository, never()).save(any());
     }
 }
