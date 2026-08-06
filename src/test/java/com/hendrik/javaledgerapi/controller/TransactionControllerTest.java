@@ -110,7 +110,7 @@ class TransactionControllerTest {
     }
 
     @Test
-    void deposit_returns403_whenPrincipalNotAdminRole() throws Exception {
+    void post_returns403_whenPrincipalNotAdminRole() throws Exception {
         authenticate(Role.USER);
 
         DepositRequest depositRequest = new DepositRequest(
@@ -189,7 +189,7 @@ class TransactionControllerTest {
                 "transfer"
         );
 
-        mockMvc.perform(post("/api/v1/transactions/deposit").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/v1/transactions/transfer").contentType(MediaType.APPLICATION_JSON)
                         .content(jsonMapper.writeValueAsString(transferRequest)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value("400"));
