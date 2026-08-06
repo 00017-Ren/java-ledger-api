@@ -51,7 +51,7 @@ class TransferRequestTest {
     }
 
     static Stream<BigDecimal> invalidAmounts() {
-        return Stream.of(null, BigDecimal.valueOf(0.0001), BigDecimal.ZERO, BigDecimal.valueOf(-10));
+        return Stream.of(null, BigDecimal.valueOf(0.0001), BigDecimal.ZERO, BigDecimal.valueOf(-10), new BigDecimal("1.00001"));
     }
 
     @ParameterizedTest

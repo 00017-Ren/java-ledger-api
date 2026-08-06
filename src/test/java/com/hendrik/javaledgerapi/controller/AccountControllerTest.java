@@ -1,22 +1,30 @@
 package com.hendrik.javaledgerapi.controller;
 
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.hendrik.javaledgerapi.dto.request.CreateAccountRequest;
 import com.hendrik.javaledgerapi.dto.response.AccountResponse;
 import com.hendrik.javaledgerapi.dto.response.BalanceResponse;
+import com.hendrik.javaledgerapi.dto.response.TransactionResponse;
 import com.hendrik.javaledgerapi.exception.GlobalExceptionHandler;
 import com.hendrik.javaledgerapi.exception.ResourceNotFoundException;
 import com.hendrik.javaledgerapi.model.Account;
 import com.hendrik.javaledgerapi.model.User;
 import com.hendrik.javaledgerapi.model.enums.Role;
+import com.hendrik.javaledgerapi.model.enums.TransactionStatus;
+import com.hendrik.javaledgerapi.model.enums.TransactionType;
 import com.hendrik.javaledgerapi.security.JwtUserPrincipal;
 import com.hendrik.javaledgerapi.service.AccountService;
+import com.hendrik.javaledgerapi.service.TransactionService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.*;
+import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -24,13 +32,16 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -40,6 +51,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AccountControllerTest {
     @Mock
     private AccountService accountService;
+    @Mock
+    private TransactionService transactionService;
     @InjectMocks
     private AccountController accountController;
 
@@ -54,7 +67,8 @@ class AccountControllerTest {
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(accountController)
                 .setControllerAdvice(new GlobalExceptionHandler())
-                .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
+                .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver(),
+                        new PageableHandlerMethodArgumentResolver())
                 .build();
 
         userId = UUID.randomUUID();
@@ -211,15 +225,6 @@ class AccountControllerTest {
 
     @Test
     void get_returns404_whenAccountDoesntExist() throws Exception {
-        User testUser = new User(
-                userId,
-                "test@domain.com",
-                "hashedPassword",
-                Role.USER,
-                LocalDateTime.now(),
-                LocalDateTime.now()
-        );
-
         authenticateUser();
 
         when((accountService.getAccountById(accountId, userId)))
@@ -231,21 +236,49 @@ class AccountControllerTest {
 
     @Test
     void get_returns400_whenUserIsNotValid() throws Exception {
-        User testUser = new User(
-                userId,
-                "test@domain.com",
-                "hashedPassword",
-                Role.USER,
-                LocalDateTime.now(),
-                LocalDateTime.now()
-        );
-
         authenticateUser();
 
         String malformedUUID = "malformedUUID";
 
         mockMvc.perform(get("/api/v1/accounts/" + malformedUUID))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Invalid id: " +  malformedUUID));
+                .andExpect(jsonPath("$.message").value("Invalid id: " + malformedUUID));
+    }
+
+    @Test
+    void get_returnsTransactionResponseAsPageable_whenUserIsValid() throws Exception {
+        authenticateUser();
+
+        Pageable pageable = PageRequest.of(1, 5, Sort.by("amount").ascending());
+
+        Page<TransactionResponse> transactionPage = new PageImpl<>(
+                List.of(new TransactionResponse(
+                        UUID.randomUUID(),
+                        "123456789012",
+                        "123456789013",
+                        BigDecimal.TEN,
+                        TransactionType.TRANSFER,
+                        TransactionStatus.COMPLETED,
+                        "test history",
+                        LocalDateTime.now()
+                )),
+                pageable,
+                1);
+
+        when(transactionService.getAccountHistory(eq(accountId), eq(userId), any(Pageable.class))).thenReturn(transactionPage);
+
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+
+
+        mockMvc.perform(get("/api/v1/accounts/" + accountId + "/transactions?page=1&size=5&sort=amount,asc"))
+                .andExpect(status().isOk());
+
+        verify(transactionService).getAccountHistory(eq(accountId), eq(userId), captor.capture());
+        Pageable capturedPageable = captor.getValue();
+
+        assertThat(capturedPageable.getPageNumber()).isEqualTo(1);
+        assertThat(capturedPageable.getPageSize()).isEqualTo(5);
+        assertThat(capturedPageable.getSort().getOrderFor("amount")
+                .getDirection()).isEqualTo(Sort.Direction.ASC);
     }
 }
