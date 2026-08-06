@@ -6,14 +6,14 @@ This plan is for building `java-ledger-api` as a learning-focused portfolio proj
 
 Target: complete the project in 6 weeks. The 13 phases are grouped by week below. Weeks 3 and 4 are the hardest (Security/JWT and money-movement/transactions) and have deliberately been given more room. If something slips, expect it to slip there. Do not let Week 5 (tests) get squeezed.
 
-| Week | Theme | Phases                       |
-| ---- | ----- |------------------------------|
-| 1 | Data layer: foundation, entities, repositories | 1 (done), 2 (done), 3 (done) |
-| 2 | API contract: DTOs/validation and exception handling | 4 (done), 5 (done)           |
-| 3 | Security: auth basics then Spring Security + JWT (hardest week) | 6 (done), 7 (done)           |
-| 4 | Domain logic: accounts then transactions (portfolio centrepiece) | 8 (done), 9                  |
-| 5 | Quality: tests then API documentation | 10, 11                       |
-| 6 | Ship it: Dockerize then deploy | 12, 13                       |
+| Week | Theme                                                            | Phases                       |
+|------|------------------------------------------------------------------|------------------------------|
+| 1    | Data layer: foundation, entities, repositories                   | 1 (done), 2 (done), 3 (done) |
+| 2    | API contract: DTOs/validation and exception handling             | 4 (done), 5 (done)           |
+| 3    | Security: auth basics then Spring Security + JWT (hardest week)  | 6 (done), 7 (done)           |
+| 4    | Domain logic: accounts then transactions (portfolio centrepiece) | 8 (done), 9 (done)           |
+| 5    | Quality: tests then API documentation                            | 10, 11                       |
+| 6    | Ship it: Dockerize then deploy                                   | 12, 13                       |
 
 ## Git Workflow (team-style)
 
@@ -53,13 +53,13 @@ Completed:
 - Account service and authenticated account endpoints for creation, listing,
   ownership-protected lookup, and balance retrieval (Phase 8 complete)
 - Account service and controller tests, plus JWT service and filter tests
+- Transaction service for deposits and transfers
+- Transaction controllers and transaction-history endpoints
+- Transaction service/controller tests, including validation failure paths and
+  optimistic-lock propagation
 
 Not built yet:
 
-- Transaction service for deposits and transfers
-- Transaction controllers and transaction-history endpoints
-- Transaction service/controller tests, including rollback and optimistic-locking
-  behavior
 - Improved API documentation, containerization, and deployment
 
 ## Week 1: Data Layer
@@ -363,7 +363,7 @@ Checkpoint:
 
 - A logged-in user can manage only their own accounts. [done]
 
-## Phase 9: Build Transaction Logic
+## Phase 9: Build Transaction Logic [COMPLETED]
 
 Goal: implement the most important portfolio feature.
 
@@ -404,30 +404,24 @@ Git:
 
 Checkpoint:
 
-- Transfer subtracts from the source account and adds to the destination account.
-- Failed transfer does not partially update balances.
-- Transaction record is saved only for valid operations.
+- Transfer subtracts from the source account and adds to the destination account. [done]
+- Failed transfer does not partially update balances. [done]
+- Transaction record is saved only for valid operations. [done]
 
 ## Week 5: Quality
 
 ## Phase 10: Add Tests Properly
 
-Goal: prove the important behavior works.
+Goal: harden quality beyond the existing service and controller test coverage.
 
-Existing tests cover registration, JWT handling, account creation, account
-ownership checks, and basic controller behavior. Extend coverage with:
+Existing Mockito service and controller tests cover the core transaction
+success and failure paths, authorization, validation, and transaction-history
+ownership. Extend coverage with high-fidelity integration tests:
 
-- Deposit funds.
-- Transfer funds.
-- Reject insufficient funds.
-- Reject transfer to same account.
-
-Then add API/controller tests:
-
-- Unauthorized request returns `401`.
-- Invalid request returns `400`.
-- Admin can deposit.
-- User cannot access another user's transaction history.
+- Real PostgreSQL/Testcontainers transaction rollback behavior.
+- Real concurrent optimistic-lock behavior.
+- Security-filter integration coverage.
+- Pagination maximum-size configuration coverage.
 
 Learn:
 
@@ -435,14 +429,15 @@ Learn:
 - Mocking repositories and services.
 - Spring Boot test slices.
 - Testcontainers for high-fidelity PostgreSQL integration tests.
+- Transaction rollback and concurrent optimistic locking under a real database.
 
 Git:
 
 - Branch: `test/service-and-controller-tests`
 - Example commits:
-  - `test: add transfer and insufficient-funds tests`
-  - `test: add transaction controller authorization and validation tests`
-- PR title: "Add service and controller tests".
+  - `test: add real transaction rollback integration coverage`
+  - `test: add concurrent optimistic locking coverage with PostgreSQL`
+- PR title: "Harden integration test coverage".
 
 Checkpoint:
 

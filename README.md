@@ -6,7 +6,7 @@ The project models a simple banking-style ledger where users can register, creat
 
 ## Project Status
 
-In progress. Current phase: Phase 9, transaction logic.
+In progress. Current phase: Phase 10, test hardening and quality improvements.
 
 Completed:
 
@@ -30,13 +30,14 @@ Completed:
   and retrieving balances for the authenticated user's accounts
 - Account service and controller tests, including ownership checks and invalid
   account identifiers
-
-Upcoming work:
-
 - Transaction service for deposits and transfers
 - REST controllers for deposits, transfers, and transaction history
-- Transaction service and controller tests, including failed-transfer and
-  optimistic-locking behavior
+- Transaction service and controller tests, including validation failure paths
+  and optimistic-lock propagation
+
+Upcoming work:
+- Phase 10 integration-test hardening for real rollback, concurrency, security,
+  and pagination-configuration behavior
 - API documentation improvements
 - Deployment
 
@@ -65,14 +66,12 @@ Implemented features:
 - Account listing, ownership-protected lookup, and balance retrieval
 - Global error handling
 - Automated repository, service, controller, security, and DTO tests
+- Admin-only deposits
+- Transfers between accounts with ownership checks for access
+- Transaction history with pagination
+- Optimistic-lock conflict handling with a `409` response
 
 Remaining features:
-
-- Role-based access control with `USER` and `ADMIN`
-- Admin-only deposits
-- Transfers between accounts
-- Transaction history with pagination
-- Optimistic locking for safer concurrent balance updates
 - OpenAPI descriptions and examples
 
 ## Domain Model
@@ -89,18 +88,26 @@ Money values use `DECIMAL(19,4)` in PostgreSQL and should be represented with `B
 
 Endpoints:
 
-| Method | Endpoint | Description | Status |
-|---|---|---|---|
-| POST | `/api/v1/auth/register` | Register a new user | Implemented |
-| POST | `/api/v1/auth/login` | Log in and receive JWT | Implemented |
-| POST | `/api/v1/accounts` | Create an account | Implemented |
-| GET | `/api/v1/accounts` | List accounts for the authenticated user | Implemented |
-| GET | `/api/v1/accounts/{id}` | Get account details | Implemented |
-| GET | `/api/v1/accounts/{id}/balance` | Get account balance | Implemented |
-| POST | `/api/v1/transactions/deposit` | Admin deposit into an account | Planned |
-| POST | `/api/v1/transactions/transfer` | Transfer money between accounts | Planned |
-| GET | `/api/v1/transactions` | View paginated transaction history | Planned |
-| GET | `/api/v1/transactions/{id}` | View a single transaction | Planned |
+| Method | Endpoint                             | Description                              | Status      |
+|--------|--------------------------------------|------------------------------------------|-------------|
+| POST   | `/api/v1/auth/register`              | Register a new user                      | Implemented |
+| POST   | `/api/v1/auth/login`                 | Log in and receive JWT                   | Implemented |
+| POST   | `/api/v1/accounts`                   | Create an account                        | Implemented |
+| GET    | `/api/v1/accounts`                   | List accounts for the authenticated user | Implemented |
+| GET    | `/api/v1/accounts/{id}`              | Get account details                      | Implemented |
+| GET    | `/api/v1/accounts/{id}/balance`      | Get account balance                      | Implemented |
+| GET    | `/api/v1/accounts/{id}/transactions` | View paginated transaction history       | Implemented |
+| POST   | `/api/v1/transactions/deposit`       | Admin deposit into an account            | Implemented |
+| POST   | `/api/v1/transactions/transfer`      | Transfer money between accounts          | Implemented |
+| GET    | `/api/v1/transactions/{id}`          | View a single transaction                | Implemented |
+
+## Known Limitations
+
+The application has the following limitations by design choice:
+
+- No FX conversion, transfers are only available between same-currency accounts.
+- Rejected transactions are not persisted as audit rows in PostgreSQL.
+- Clients must retry after a 409 optimistic-lock conflict.
 
 ## Local Development
 

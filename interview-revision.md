@@ -53,10 +53,12 @@ takeaway**.
 ### Optimistic locking with `@Version`
 - **Why it matters:** Demonstrates understanding of concurrency / lost updates,
   highly relevant for anything touching money.
-- **Takeaway:** A `@Version` field (int/long/timestamp) is auto-managed by
-  Hibernate: it increments on every update and, if two transactions update the
-  same row concurrently, the second commit fails with `OptimisticLockException`.
-  No DB row locks are held (unlike pessimistic locking), so it scales better for
+- **Takeaway:** A `@Version` field is auto-managed by Hibernate: it increments
+  on every update and detects a concurrent version conflict. In this codebase,
+  Spring exposes that conflict as `ObjectOptimisticLockingFailureException`,
+  `GlobalExceptionHandler` returns `409 Conflict`, and the client can retry.
+  The current test simulates exception propagation; a real concurrent
+  PostgreSQL test is still future work. No DB row locks are held, so this suits
   low-contention workloads. Never write a setter for the version field.
 
 ### `ddl-auto: validate`
@@ -280,6 +282,15 @@ takeaway**.
   clean 400 response, with zero validation logic written in the controller
   itself. One annotation (`@Valid`) wires together: DTO constraints → request
   parsing → automatic rejection → centralised error handling.
+
+### API money precision must match the database column
+- **Why it matters:** A money request with more fractional digits than the
+  database column supports can be rounded or rejected only after it reaches
+  persistence, which is unsafe and surprising for a ledger API.
+- **Takeaway:** For `DECIMAL(19,4)`, use `@Digits(integer = 15, fraction = 4)`
+  on request amounts alongside `@DecimalMin("0.01")`. The constraints cover
+  different rules: `@Digits` enforces representable precision and
+  `@DecimalMin` enforces a positive business minimum.
 
 ## Spring Security
 
@@ -516,6 +527,12 @@ takeaway**.
   money. Use `BigDecimal` with explicit `precision`/`scale` (here `DECIMAL(19,4)`),
   and always specify a `RoundingMode` when dividing.
 
+### Money: Comparing monetary `BigDecimal` values with `compareTo`
+- **Why it matters:** `equals` is scale-sensitive and operators do not work with objects,
+  incorrect comparisons can approve an overdraft.
+- **Takeaway:** use `balance.compareTo(amount) < 0` for insufficient-funds checks,
+  it compares numeric value regardless of scale.
+
 ### Identifiers as `String`, not numeric types
 - **Why it matters:** Tests judgement about modelling data correctly.
 - **Takeaway:** Account numbers, phone numbers, postal codes are identifiers, not
@@ -592,4 +609,10 @@ takeaway**.
 ### GlobalExceptionHandler for parameter binding errors
 - **Why it matters:** Bad input (malformed UUIDs, invalid JSON) must return a consistent 400 response, not a default framework error page.
 - **Takeaway:** Add `@ExceptionHandler(MethodArgumentTypeMismatchException.class)` to catch path variable binding failures (e.g. `GET /accounts/not-a-uuid` when `@PathVariable UUID id` expects a UUID). Return `400 Bad Request` with the standard `ErrorResponse` structure. This handler centralizes error shaping and prevents the controller from needing try/catch blocks.
+
+## Transaction & Service Layer (Phase 9)
+
+### Validate before mutate
+- **Why it matters:** Validating first prevents partial balance changes and keeps money movement atomic: a failed transfer must not leave only one balance updated.
+- **Takeaway:** Check self-transfer, account existence, ownership, currency, and sufficient funds before mutating balances or saving through repositories. This ordering makes no-save-on-failure behaviour provable with Mockito, without needing a real transaction manager.
 
