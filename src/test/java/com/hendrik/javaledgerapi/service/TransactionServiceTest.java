@@ -18,6 +18,7 @@ import com.hendrik.javaledgerapi.repository.TransactionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -227,12 +228,26 @@ class TransactionServiceTest {
         when(accountRepository.findByAccountNumber(request.destinationAccountNumber())).thenReturn(Optional.of(destinationAccount));
         when(transactionRepository.save(any())).thenReturn(transaction);
 
+        ArgumentCaptor<Transaction> captor = ArgumentCaptor.forClass(Transaction.class);
+
         TransactionResponse response = transactionService.transfer(userId, request);
+
+        verify(transactionRepository).save(captor.capture());
+        Transaction capturedTransaction = captor.getValue();
+
+        assertThat(capturedTransaction.getSourceAccount()).isEqualTo(sourceAccount);
+        assertThat(capturedTransaction.getDestinationAccount()).isEqualTo(destinationAccount);
+        assertThat(capturedTransaction.getAmount()).isEqualTo(BigDecimal.TWO);
+        assertThat(capturedTransaction.getType()).isEqualTo(TransactionType.TRANSFER);
+        assertThat(capturedTransaction.getStatus()).isEqualTo(TransactionStatus.COMPLETED);
+        assertThat(capturedTransaction.getDescription()).isEqualTo("transfer");
+        assertThat(response.id()).isEqualTo(transaction.getId());
+
+        verify(accountRepository, times(1)).save(sourceAccount);
+        verify(accountRepository, times(1)).save(destinationAccount);
 
         assertThat(sourceAccount.getBalance()).isEqualTo(BigDecimal.valueOf(8));
         assertThat(destinationAccount.getBalance()).isEqualTo(BigDecimal.TWO);
-
-        verify(transactionRepository, times(1)).save(any());
     }
 
     @Test
@@ -303,11 +318,23 @@ class TransactionServiceTest {
         when(accountRepository.findByAccountNumber(request.destinationAccountNumber())).thenReturn(Optional.of(destinationAccount));
         when(transactionRepository.save(any())).thenReturn(transaction);
 
+        ArgumentCaptor<Transaction> captor = ArgumentCaptor.forClass(Transaction.class);
+
         TransactionResponse response = transactionService.deposit(callerRole, request);
 
-        assertThat(response.type()).isEqualTo(TransactionType.DEPOSIT);
+        verify(transactionRepository).save(captor.capture());
+        Transaction capturedTransaction = captor.getValue();
+
+        assertThat(capturedTransaction.getSourceAccount()).isNull();
+        assertThat(capturedTransaction.getDestinationAccount()).isEqualTo(destinationAccount);
+        assertThat(capturedTransaction.getAmount()).isEqualTo(BigDecimal.TEN);
+        assertThat(capturedTransaction.getType()).isEqualTo(TransactionType.DEPOSIT);
+        assertThat(capturedTransaction.getStatus()).isEqualTo(TransactionStatus.COMPLETED);
+        assertThat(capturedTransaction.getDescription()).isEqualTo("deposit");
+        assertThat(response.id()).isEqualTo(transaction.getId());
         assertThat(destinationAccount.getBalance()).isEqualTo(BigDecimal.TEN);
-        verify(transactionRepository, times(1)).save(any());
+
+        verify(accountRepository, times(1)).save(destinationAccount);
     }
 
     @Test
@@ -486,7 +513,7 @@ class TransactionServiceTest {
         when(accountRepository.findByAccountNumber(request.destinationAccountNumber())).thenReturn(Optional.of(destinationAccount));
         when(accountRepository.save(sourceAccount)).thenThrow(ObjectOptimisticLockingFailureException.class);
 
-        assertThatThrownBy(() -> transactionService.transfer(userId,request))
+        assertThatThrownBy(() -> transactionService.transfer(userId, request))
                 .isInstanceOf(ObjectOptimisticLockingFailureException.class);
 
         verify(transactionRepository, never()).save(any());
