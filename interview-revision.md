@@ -130,17 +130,26 @@ takeaway**.
     generally the cleaner option for non-primitive types like `BigDecimal`.
   Either way, no need for a separate `@Test` just to cover the null case.
 
-### `@DataJpaTest` + Testcontainers: use the real DB
-- **Why it matters:** Shows you know slice tests and high-fidelity DB testing.
+### Testcontainers database tests: slices vs full contexts
+- **Why it matters:** Shows you understand high-fidelity database tests and the
+  lifecycle interaction between Testcontainers and Spring's cached test context.
 - **Takeaway:** `@DataJpaTest` loads only the JPA slice and wraps each test in a
-  transaction that **rolls back** after, keeping tests isolated. By default it
-  swaps in an embedded DB — add `@AutoConfigureTestDatabase(replace = NONE)` to
-  keep your real DataSource. With `@Testcontainers` + a `static @Container` +
-  `@ServiceConnection`, Spring Boot 3.1+/4 auto-wires the container's JDBC
-  connection (no manual `@DynamicPropertySource`). Static container = one per
-  class (fast); non-static = one per method (slow). When Flyway is on the
-  classpath it runs against the container, so migrations (including seed data like
-  an admin insert) build the schema — real Postgres, not H2.
+  transaction that **rolls back** after. Add
+  `@AutoConfigureTestDatabase(replace = NONE)` to retain the configured real
+  datasource. `@ServiceConnection` wires a PostgreSQL container into JDBC and
+  Flyway without `@DynamicPropertySource`. For multiple `@SpringBootTest`
+  classes, prefer a `@TestConfiguration` with an `@Bean @ServiceConnection`
+  container: Spring starts it before dependent beans and stops it when the
+  cached context closes. A JUnit static `@Container` stops after each class, so
+  a reused context can retain a datasource pointing to a stopped container.
+
+### Targeted integration-test fixture cleanup
+- **Why it matters:** Integration tests commit real rows, so careless cleanup
+  causes cross-test contamination or deletes migration seed data.
+- **Takeaway:** Track test-created user/account IDs, discover related
+  transactions, and delete in foreign-key order: transactions, accounts, then
+  users. Avoid broad `deleteAll()` calls and test-level transaction rollback
+  when the test must observe application transaction behavior.
 
 ### Asserting on `Page` results
 - **Why it matters:** Pagination is everywhere; interviewers check you test the
