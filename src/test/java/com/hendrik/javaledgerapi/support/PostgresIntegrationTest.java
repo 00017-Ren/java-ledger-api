@@ -24,12 +24,12 @@ public abstract class PostgresIntegrationTest {
     protected TestDataFactory testDataFactory;
 
     @BeforeEach
-    public void setup() {
+    void setup() {
         testDataFactory = new TestDataFactory(userRepository, accountRepository, transactionRepository);
     }
 
     @AfterEach
-    public void tearDown() {
+    void tearDown() {
         testDataFactory.cleanupCreatedData();
     }
 }
