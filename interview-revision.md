@@ -57,9 +57,9 @@ takeaway**.
   on every update and detects a concurrent version conflict. In this codebase,
   Spring exposes that conflict as `ObjectOptimisticLockingFailureException`,
   `GlobalExceptionHandler` returns `409 Conflict`, and the client can retry.
-  The current test simulates exception propagation; a real concurrent
-  PostgreSQL test is still future work. No DB row locks are held, so this suits
-  low-contention workloads. Never write a setter for the version field.
+  Integration coverage now exercises the conflict with concurrent PostgreSQL
+  transactions. No DB row locks are held, so this suits low-contention
+  workloads. Never write a setter for the version field.
 
 ### `ddl-auto: validate`
 - **Why it matters:** Shows you understand schema ownership in a real project.
@@ -130,17 +130,58 @@ takeaway**.
     generally the cleaner option for non-primitive types like `BigDecimal`.
   Either way, no need for a separate `@Test` just to cover the null case.
 
-### `@DataJpaTest` + Testcontainers: use the real DB
-- **Why it matters:** Shows you know slice tests and high-fidelity DB testing.
+### Testcontainers database tests: slices vs full contexts
+- **Why it matters:** Shows you understand high-fidelity database tests and the
+  lifecycle interaction between Testcontainers and Spring's cached test context.
 - **Takeaway:** `@DataJpaTest` loads only the JPA slice and wraps each test in a
-  transaction that **rolls back** after, keeping tests isolated. By default it
-  swaps in an embedded DB — add `@AutoConfigureTestDatabase(replace = NONE)` to
-  keep your real DataSource. With `@Testcontainers` + a `static @Container` +
-  `@ServiceConnection`, Spring Boot 3.1+/4 auto-wires the container's JDBC
-  connection (no manual `@DynamicPropertySource`). Static container = one per
-  class (fast); non-static = one per method (slow). When Flyway is on the
-  classpath it runs against the container, so migrations (including seed data like
-  an admin insert) build the schema — real Postgres, not H2.
+  transaction that **rolls back** after. Add
+  `@AutoConfigureTestDatabase(replace = NONE)` to retain the configured real
+  datasource. `@ServiceConnection` wires a PostgreSQL container into JDBC and
+  Flyway without `@DynamicPropertySource`. For multiple `@SpringBootTest`
+  classes, prefer a `@TestConfiguration` with an `@Bean @ServiceConnection`
+  container: Spring starts it before dependent beans and stops it when the
+  cached context closes. A JUnit static `@Container` stops after each class, so
+  a reused context can retain a datasource pointing to a stopped container.
+
+### Test-managed versus application-managed transactions
+- **Why it matters:** A test transaction can hide whether the application's
+  transaction boundary truly rolls back money movement after a late failure.
+- **Takeaway:** Spring's test transaction rolls back the test method at the end;
+  it is not evidence that an application service's `@Transactional` proxy works.
+  For rollback integration tests, call the real proxied service without wrapping
+  the test in `@Transactional`, then query persisted state after the failure.
+
+### Deferred constraints and transaction rollback
+- **Why it matters:** Tests whether you understand that database constraints can
+  be checked at commit time, which is important when proving money movement is
+  atomic.
+- **Takeaway:** A PostgreSQL deferred constraint may allow intermediate invalid
+  state inside a transaction but fail at commit; integration tests must verify
+  the resulting rollback against a real PostgreSQL database, not only mocked
+  repository calls.
+
+### Testing concurrent optimistic locking
+- **Why it matters:** A concurrency test demonstrates that `@Version` protects
+  against lost updates under real database timing, rather than only testing
+  exception translation.
+- **Takeaway:** Run competing transactions against the same versioned row and
+  assert that one update loses with an optimistic-lock conflict; the application
+  can translate that conflict into `409 Conflict`.
+
+### Testing pageable bounds and defaults
+- **Why it matters:** Unbounded or client-controlled page sizes can waste
+  resources; default behavior is part of the API contract.
+- **Takeaway:** Integration-test both omitted paging parameters and oversized
+  requests: this API defaults to 20 rows and caps requested pages at 100 rows,
+  so clients cannot force unbounded responses.
+
+### Targeted integration-test fixture cleanup
+- **Why it matters:** Integration tests commit real rows, so careless cleanup
+  causes cross-test contamination or deletes migration seed data.
+- **Takeaway:** Track test-created user/account IDs, discover related
+  transactions, and delete in foreign-key order: transactions, accounts, then
+  users. Avoid broad `deleteAll()` calls and test-level transaction rollback
+  when the test must observe application transaction behavior.
 
 ### Asserting on `Page` results
 - **Why it matters:** Pagination is everywhere; interviewers check you test the
@@ -432,6 +473,15 @@ takeaway**.
   application context.
 - **Takeaway:** Prefer slices for fast feedback on isolated components, and
   integration tests for end-to-end behavior across layers.
+
+### Testing the JWT security filter chain
+- **Why it matters:** Unit-testing token parsing does not prove that requests
+  are authenticated and authorized correctly through Spring Security.
+- **Takeaway:** Filter-chain integration tests should cover public access,
+  missing or invalid bearer tokens, and authenticated access so the JWT filter,
+  `SecurityContext`, and authorization rules are tested together. A real
+  `Authorization: Bearer` header minted by `JwtService` exercises the custom
+  `JwtAuthenticationFilter`; Spring Security's `jwt()` test helper bypasses it.
 
 ## Spring / Exception Handling
 

@@ -410,7 +410,7 @@ Checkpoint:
 
 ## Week 5: Quality
 
-## Phase 10: Add Tests Properly
+## Phase 10: Add Tests Properly [COMPLETED]
 
 Goal: harden quality beyond the existing service and controller test coverage.
 
@@ -422,6 +422,11 @@ ownership. Extend coverage with high-fidelity integration tests:
 - Real concurrent optimistic-lock behavior.
 - Security-filter integration coverage.
 - Pagination maximum-size configuration coverage.
+
+Implemented integration coverage includes a real PostgreSQL Testcontainers
+foundation, PostgreSQL deferred-constraint rollback, concurrent optimistic
+locking, JWT filter-chain behavior, and pageable maximum-size/default-page
+behavior.
 
 Learn:
 
@@ -441,7 +446,9 @@ Git:
 
 Checkpoint:
 
-- `./mvnw clean test` passes consistently.
+- `./mvnw clean test` passes consistently. [done]
+- Integration coverage is present for rollback, concurrency, security-filter,
+  and pagination-configuration behavior. [done]
 
 ## Phase 11: Improve API Documentation
 

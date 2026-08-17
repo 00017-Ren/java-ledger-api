@@ -6,7 +6,7 @@ The project models a simple banking-style ledger where users can register, creat
 
 ## Project Status
 
-In progress. Current phase: Phase 10, test hardening and quality improvements.
+In progress. Current phase: Phase 11, API documentation improvements.
 
 Completed:
 
@@ -18,6 +18,9 @@ Completed:
 - JPA entity mappings for users, accounts, and transactions
 - Repository layer (Spring Data JPA)
 - Repository slice tests using `@DataJpaTest` with Testcontainers (real PostgreSQL)
+- Integration tests using real PostgreSQL Testcontainers for deferred-constraint
+  rollback, concurrent optimistic locking, JWT filter-chain behavior, and
+  pageable maximum-size/default-page behavior
 - Request/response DTOs with Jakarta Bean Validation
 - Global exception handling (`@RestControllerAdvice`) with unit tests
 - User registration (`AuthService`/`AuthController`) with BCrypt password
@@ -36,8 +39,6 @@ Completed:
   and optimistic-lock propagation
 
 Upcoming work:
-- Phase 10 integration-test hardening for real rollback, concurrency, security,
-  and pagination-configuration behavior
 - API documentation improvements
 - Deployment
 
