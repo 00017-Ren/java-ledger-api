@@ -18,4 +18,3 @@ spring:
 jwt:
   secret: my-256-bit-secret-my-256-bit-secret-my-256-bit-secret
   access-token-expiration-ms: 900000        # 15 minutes
-  refresh-token-expiration-ms: 604800000    # 7 days
