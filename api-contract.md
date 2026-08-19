@@ -66,18 +66,12 @@ producing one contract, not one path.
 
 ## Known gaps (explicitly deferred, not fixed in this phase)
 
-- **`Role.java`'s doc comment** claims admins can view all accounts; no such
-  capability exists. The comment is stale and will be corrected separately,
-  outside this documentation phase. Do not document the false capability.
 - **`AccountService.createAccount`'s unhandled `DataIntegrityViolationException`**:
   a DB constraint violation on account creation (e.g. a duplicate account
   number collision) currently surfaces as an unhandled `500` with Spring
   Boot's default error body, not the API's `ErrorResponse` shape. This is a
   known limitation, deferred rather than fixed as part of documentation work.
   It belongs in the README's "Known limitations" list (Phase 11, Step 6).
-- **`application-dev.yml`'s refresh-token expiry setting** has no
-  corresponding implementation in `JwtProperties` or `AuthResponse`. Do not
-  imply refresh-token support anywhere in the generated docs.
 
 ## Enums
 
