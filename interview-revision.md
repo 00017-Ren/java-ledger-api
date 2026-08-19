@@ -333,6 +333,56 @@ takeaway**.
   different rules: `@Digits` enforces representable precision and
   `@DecimalMin` enforces a positive business minimum.
 
+### OpenAPI as an executable API contract
+- **Why it matters:** Distinguishes documentation that's actually trustworthy
+  from a stale doc or Postman collection nobody maintains — a natural
+  follow-up to "how do you document an API for other developers?"
+- **Takeaway:** springdoc-openapi generates the OpenAPI document from the
+  running application's own annotations (`@Operation`, `@ApiResponse`,
+  `@Schema`), not from hand-written prose kept in a separate file. Because
+  it's generated from the same code that serves requests, a MockMvc test can
+  assert directly against `/v3/api-docs` (bearer requirements, status codes,
+  schema references) and fail the build the moment code and documented
+  contract diverge — documentation becomes something enforced, not just
+  written and hoped-for.
+
+### Reusable security schemes vs. per-operation requirements
+- **Why it matters:** A common point of confusion — declaring a security
+  scheme once doesn't secure anything by itself.
+- **Takeaway:** `components.securitySchemes` (e.g. one `bearerAuth`
+  HTTP-bearer/JWT scheme, declared once) is only a *definition*. Each
+  operation must separately carry a `security` requirement referencing that
+  scheme name before Swagger UI's Authorize control — or any client reading
+  the spec — treats it as protected. Applying the requirement globally is a
+  shortcut that silently documents public endpoints (registration, login) as
+  needing auth they don't; apply it per-controller or per-operation instead,
+  matching the real `SecurityFilterChain` rules.
+
+### Operation-level auth metadata isn't derived automatically
+- **Why it matters:** Shows you understand that OpenAPI generation reflects
+  your *annotations*, not your actual Spring Security configuration — the
+  two can silently drift apart.
+- **Takeaway:** springdoc cannot inspect a `SecurityFilterChain`'s
+  `.requestMatchers(...).permitAll()`/`.authenticated()` rules and infer
+  which operations need bearer auth; each controller or operation needs an
+  explicit `@SecurityRequirement`. That annotation is a claim, not a
+  guarantee — it can fall out of sync with `SecurityConfig` if one changes
+  without the other. Same discipline applies to `@AuthenticationPrincipal`
+  parameters: springdoc doesn't know they're resolved from the security
+  context rather than the request body, so they must be explicitly hidden
+  (a `ParameterCustomizer`, or `@Parameter(hidden = true)`) or they leak into
+  the generated schema as a bogus request parameter.
+
+### Verify generated docs by breaking them, not just reading them
+- **Why it matters:** The same "watch it fail" discipline used for regular
+  tests, applied to a documentation contract test — proves it's actually
+  load-bearing rather than trivially passing.
+- **Takeaway:** A contract test that always passes doesn't prove the
+  annotations are wired correctly. Temporarily remove a `@SecurityRequirement`
+  (or whatever the test asserts on) and confirm the specific assertion fails
+  for the right reason, then restore it. If it doesn't fail, the test isn't
+  checking what it claims to.
+
 ## Spring Security
 
 ### Spring Security's default auto-configuration lockdown

@@ -93,6 +93,7 @@ Endpoints:
 |--------|--------------------------------------|------------------------------------------|-------------|
 | POST   | `/api/v1/auth/register`              | Register a new user                      | Implemented |
 | POST   | `/api/v1/auth/login`                 | Log in and receive JWT                   | Implemented |
+| GET    | `/api/v1/users/me`                   | Get the authenticated user's profile     | Implemented |
 | POST   | `/api/v1/accounts`                   | Create an account                        | Implemented |
 | GET    | `/api/v1/accounts`                   | List accounts for the authenticated user | Implemented |
 | GET    | `/api/v1/accounts/{id}`              | Get account details                      | Implemented |
@@ -102,6 +103,59 @@ Endpoints:
 | POST   | `/api/v1/transactions/transfer`      | Transfer money between accounts          | Implemented |
 | GET    | `/api/v1/transactions/{id}`          | View a single transaction                | Implemented |
 
+## API Workflow
+
+A minimal end-to-end flow using `curl` in a POSIX shell (e.g. Git Bash on
+Windows, or any Linux/macOS terminal). Requires the app running locally (see
+[Local Development](#local-development)). Token/id extraction uses plain
+`grep`/`cut` so the flow has no extra dependencies.
+
+```bash
+# 1. Register a new user
+curl -s -X POST http://localhost:8080/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"jane.doe@example.com","password":"Str0ngPassw0rd!"}'
+
+# 2. Log in and capture the JWT
+LOGIN_RESPONSE=$(curl -s -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"jane.doe@example.com","password":"Str0ngPassw0rd!"}')
+TOKEN=$(echo "$LOGIN_RESPONSE" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
+
+# 3. Create an account
+CREATE_RESPONSE=$(curl -s -X POST http://localhost:8080/api/v1/accounts \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"currency":"USD"}')
+echo "$CREATE_RESPONSE"
+ACCOUNT_ID=$(echo "$CREATE_RESPONSE" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+
+# 4. List your accounts
+curl -s http://localhost:8080/api/v1/accounts \
+  -H "Authorization: Bearer $TOKEN"
+
+# 5. View that account's transaction history
+curl -s "http://localhost:8080/api/v1/accounts/$ACCOUNT_ID/transactions" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Deposits (`POST /api/v1/transactions/deposit`) additionally require an `ADMIN`
+role and are omitted here since a freshly registered user is a `USER`.
+
+### Authorizing in Swagger UI
+
+1. Open `http://localhost:8080/swagger-ui.html`.
+2. Call `POST /api/v1/auth/register` (once) and `POST /api/v1/auth/login` to
+   obtain a JWT from the response body.
+3. Click **Authorize**, paste the raw token value (Swagger UI adds the
+   `Bearer ` prefix for you), and close the dialog.
+4. Every protected request from Swagger UI now includes the token
+   automatically. `POST /api/v1/auth/register` and `POST /api/v1/auth/login`
+   stay callable without it.
+
+Never publish the seed-admin password, a JWT, or the development JWT signing
+secret from `application-dev.yml` in documentation, screenshots, or commits.
+
 ## Known Limitations
 
 The application has the following limitations by design choice:
@@ -109,6 +163,14 @@ The application has the following limitations by design choice:
 - No FX conversion, transfers are only available between same-currency accounts.
 - Rejected transactions are not persisted as audit rows in PostgreSQL.
 - Clients must retry after a 409 optimistic-lock conflict.
+- No refresh-token flow, token revocation, or logout endpoint. A refresh-token
+  expiry setting exists in `application-dev.yml` but has no corresponding
+  implementation; it does not enable refresh-token support.
+- No standalone withdrawal endpoint. Funds only move via deposit (admin-only,
+  credit) and transfer (between accounts).
+- Account creation does not yet handle a database-level account-number
+  collision: on the rare occurrence of one, the request fails with a generic
+  `500` response instead of the API's standard error format.
 
 ## Local Development
 
