@@ -11,7 +11,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -38,16 +37,11 @@ public class AccountService {
 
         String accountNumber = accountNumberGenerator.generateAccountNumber();
 
-        Account account = new Account(
-                userId,
-                user,
-                accountNumber,
-                BigDecimal.valueOf(0),
-                currency,
-                0,
-                LocalDateTime.now(),
-                LocalDateTime.now()
-        );
+        Account account = new Account();
+        account.setUser(user);
+        account.setAccountNumber(accountNumber);
+        account.setBalance(BigDecimal.ZERO);
+        account.setCurrency(currency);
 
         try {
             return accountRepository.save(account);
