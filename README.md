@@ -163,9 +163,8 @@ The application has the following limitations by design choice:
 - No FX conversion, transfers are only available between same-currency accounts.
 - Rejected transactions are not persisted as audit rows in PostgreSQL.
 - Clients must retry after a 409 optimistic-lock conflict.
-- No refresh-token flow, token revocation, or logout endpoint. A refresh-token
-  expiry setting exists in `application-dev.yml` but has no corresponding
-  implementation; it does not enable refresh-token support.
+- No refresh-token flow, token revocation, or logout endpoint. Only short-lived
+  access tokens are issued.
 - No standalone withdrawal endpoint. Funds only move via deposit (admin-only,
   credit) and transfer (between accounts).
 - Account creation does not yet handle a database-level account-number
