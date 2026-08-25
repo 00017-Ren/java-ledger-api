@@ -636,6 +636,10 @@ takeaway**.
   So "Cannot resolve symbol `@DataJpaTest`" on Boot 4 = missing the new test
   starter, not an IDE glitch.
 
+### Maven JDK runtime vs compiler release
+- **Why it matters:** Build failures can come from the toolchain rather than application code, and annotation processors often depend on JDK compiler internals.
+- **Takeaway:** `<java.version>25</java.version>` sets the class-file/source target; it does not choose the JDK that runs Maven. Maven must itself run on a compatible JDK. Here, Lombok `1.18.46` works with JDK 25 but fails on JDK 27 because JDK 27 removed `com.sun.tools.javac.tree.EndPosTable`. Check `./mvnw -version` and `JAVA_HOME`, not only the POM.
+
 ## Java
 
 ### Money: use `BigDecimal`, never `double`/`float`
