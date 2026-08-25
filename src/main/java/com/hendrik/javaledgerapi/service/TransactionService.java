@@ -54,7 +54,7 @@ public class TransactionService {
         transaction.setStatus(TransactionStatus.COMPLETED);
         transaction.setDescription(request.description());
 
-        Transaction savedTransaction = transactionRepository.save(transaction);
+        Transaction savedTransaction = transactionRepository.saveAndFlush(transaction);
 
         return TransactionResponse.from(savedTransaction);
     }
@@ -97,7 +97,7 @@ public class TransactionService {
         transaction.setStatus(TransactionStatus.COMPLETED);
         transaction.setDescription(request.description());
 
-        Transaction savedTransaction = transactionRepository.save(transaction);
+        Transaction savedTransaction = transactionRepository.saveAndFlush(transaction);
 
         return TransactionResponse.from(savedTransaction);
     }

@@ -226,13 +226,13 @@ class TransactionServiceTest {
 
         when(accountRepository.findByAccountNumber(request.sourceAccountNumber())).thenReturn(Optional.of(sourceAccount));
         when(accountRepository.findByAccountNumber(request.destinationAccountNumber())).thenReturn(Optional.of(destinationAccount));
-        when(transactionRepository.save(any())).thenReturn(transaction);
+        when(transactionRepository.saveAndFlush(any())).thenReturn(transaction);
 
         ArgumentCaptor<Transaction> captor = ArgumentCaptor.forClass(Transaction.class);
 
         TransactionResponse response = transactionService.transfer(userId, request);
 
-        verify(transactionRepository).save(captor.capture());
+        verify(transactionRepository).saveAndFlush(captor.capture());
         Transaction capturedTransaction = captor.getValue();
 
         assertThat(capturedTransaction.getSourceAccount()).isEqualTo(sourceAccount);
@@ -316,13 +316,13 @@ class TransactionServiceTest {
         );
 
         when(accountRepository.findByAccountNumber(request.destinationAccountNumber())).thenReturn(Optional.of(destinationAccount));
-        when(transactionRepository.save(any())).thenReturn(transaction);
+        when(transactionRepository.saveAndFlush(any())).thenReturn(transaction);
 
         ArgumentCaptor<Transaction> captor = ArgumentCaptor.forClass(Transaction.class);
 
         TransactionResponse response = transactionService.deposit(callerRole, request);
 
-        verify(transactionRepository).save(captor.capture());
+        verify(transactionRepository).saveAndFlush(captor.capture());
         Transaction capturedTransaction = captor.getValue();
 
         assertThat(capturedTransaction.getSourceAccount()).isNull();

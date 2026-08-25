@@ -69,6 +69,27 @@ takeaway**.
   safer and version-controlled, unlike `ddl-auto: update` which should never be
   used in production.
 
+### Persistence context, flush, and transaction commit
+- **Why it matters:** Distinguishes `save()` from actually executing SQL and is a
+  common JPA transaction-boundary interview question.
+- **Takeaway:** `save()` makes an entity managed or schedules it for persistence
+  in the persistence context; it does not necessarily send SQL immediately.
+  **Flush** synchronizes that context with the database by sending pending SQL,
+  and generated fields may become available at that point. **Commit** completes
+  the transaction, making the changes durable and visible to other transactions
+  (subject to the database's isolation rules). A flush is not a commit: a later
+  rollback can still undo the flushed SQL.
+
+## Database Migrations
+
+### Append-only migrations and invalid seed cleanup
+- **Why it matters:** Flyway records a checksum for every applied versioned
+  migration. Editing an applied script breaks validation and makes environments
+  diverge.
+- **Takeaway:** Correct an invalid historical seed with a new, idempotent
+  migration. Match the known placeholder email, hash, and role so the cleanup
+  cannot delete a legitimate user.
+
 ## Testing
 
 ### Watch a test fail before you trust it passing
@@ -142,6 +163,14 @@ takeaway**.
   container: Spring starts it before dependent beans and stops it when the
   cached context closes. A JUnit static `@Container` stops after each class, so
   a reused context can retain a datasource pointing to a stopped container.
+
+### End-to-end privileged workflow tests
+- **Why it matters:** Tests that manually insert an `ADMIN` can miss bootstrap,
+  password encoding, login, JWT filtering, and authorization regressions.
+- **Takeaway:** Use a PostgreSQL Testcontainers test that starts with the
+  bootstrap enabled, logs in as the created admin, performs the privileged API
+  call, then logs in as a normal user for the follow-up workflow. This proves
+  the real security and persistence path instead of a hand-built shortcut.
 
 ### Test-managed versus application-managed transactions
 - **Why it matters:** A test transaction can hide whether the application's
@@ -402,6 +431,15 @@ takeaway**.
   silently still open only if you wrote `permitAll()` too broadly, or
   silently still locked if you forgot to list it at all.
 
+### Development-only privileged-account bootstrap
+- **Why it matters:** Demonstrates defense in depth and safe idempotent startup
+  work without adding a role-escalation API endpoint.
+- **Takeaway:** Guard a development admin bootstrap with both `@Profile("dev")`
+  and an explicit opt-in property. On repeat startup, accept an existing ADMIN
+  unchanged, but fail if the email belongs to a normal user. A unique database
+  constraint remains the concurrency authority: on a duplicate-save race,
+  re-read and accept only an ADMIN.
+
 ### CSRF protection vs. stateless bearer-token APIs
 - **Why it matters:** Disabling CSRF protection looks alarming out of context
   ("why are you turning off security?") — being able to justify it precisely
@@ -617,6 +655,10 @@ takeaway**.
   So "Cannot resolve symbol `@DataJpaTest`" on Boot 4 = missing the new test
   starter, not an IDE glitch.
 
+### Maven JDK runtime vs compiler release
+- **Why it matters:** Build failures can come from the toolchain rather than application code, and annotation processors often depend on JDK compiler internals.
+- **Takeaway:** `<java.version>25</java.version>` sets the class-file/source target; it does not choose the JDK that runs Maven. Maven must itself run on a compatible JDK. Here, Lombok `1.18.46` works with JDK 25 but fails on JDK 27 because JDK 27 removed `com.sun.tools.javac.tree.EndPosTable`. Check `./mvnw -version` and `JAVA_HOME`, not only the POM.
+
 ## Java
 
 ### Money: use `BigDecimal`, never `double`/`float`
@@ -715,4 +757,3 @@ takeaway**.
 ### Validate before mutate
 - **Why it matters:** Validating first prevents partial balance changes and keeps money movement atomic: a failed transfer must not leave only one balance updated.
 - **Takeaway:** Check self-transfer, account existence, ownership, currency, and sufficient funds before mutating balances or saving through repositories. This ordering makes no-save-on-failure behaviour provable with Mockito, without needing a real transaction manager.
-
