@@ -164,6 +164,14 @@ takeaway**.
   cached context closes. A JUnit static `@Container` stops after each class, so
   a reused context can retain a datasource pointing to a stopped container.
 
+### End-to-end privileged workflow tests
+- **Why it matters:** Tests that manually insert an `ADMIN` can miss bootstrap,
+  password encoding, login, JWT filtering, and authorization regressions.
+- **Takeaway:** Use a PostgreSQL Testcontainers test that starts with the
+  bootstrap enabled, logs in as the created admin, performs the privileged API
+  call, then logs in as a normal user for the follow-up workflow. This proves
+  the real security and persistence path instead of a hand-built shortcut.
+
 ### Test-managed versus application-managed transactions
 - **Why it matters:** A test transaction can hide whether the application's
   transaction boundary truly rolls back money movement after a late failure.
