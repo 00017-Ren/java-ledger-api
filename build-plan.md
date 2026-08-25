@@ -12,8 +12,10 @@ Target: complete the project in 6 weeks. The 13 phases are grouped by week below
 | 2    | API contract: DTOs/validation and exception handling             | 4 (done), 5 (done)           |
 | 3    | Security: auth basics then Spring Security + JWT (hardest week)  | 6 (done), 7 (done)           |
 | 4    | Domain logic: accounts then transactions (portfolio centrepiece) | 8 (done), 9 (done)           |
-| 5    | Quality: tests then API documentation                            | 10, 11                       |
+| 5    | Quality: tests then API documentation                            | 10 (done), 11 (done)         |
 | 6    | Ship it: Dockerize then deploy                                   | 12, 13                       |
+
+Current phase: Phase 12, Dockerize The Full App.
 
 ## Git Workflow (team-style)
 
@@ -57,10 +59,17 @@ Completed:
 - Transaction controllers and transaction-history endpoints
 - Transaction service/controller tests, including validation failure paths and
   optimistic-lock propagation
+- OpenAPI documentation with endpoint descriptions, response schemas, examples,
+  and JWT bearer authentication support in Swagger UI
+- OpenAPI contract integration tests covering the generated API document
+- Optional development-only admin bootstrap, guarded by the `dev` profile and an
+  explicit opt-in property
+- Removal of the invalid placeholder admin migration seed
+- Transaction create responses populated with their persisted `createdAt` value
 
 Not built yet:
 
-- Improved API documentation, containerization, and deployment
+- Containerization and deployment
 
 ## Week 1: Data Layer
 
@@ -450,17 +459,22 @@ Checkpoint:
 - Integration coverage is present for rollback, concurrency, security-filter,
   and pagination-configuration behavior. [done]
 
-## Phase 11: Improve API Documentation
+## Phase 11: Improve API Documentation [COMPLETED]
 
 Goal: make the project easy for employers to understand.
 
-Add:
+Completed:
 
-- Swagger descriptions.
-- Example request and response bodies.
-- Clear endpoint names.
-- README screenshots or sample calls.
+- Swagger descriptions, response codes, and response schemas.
+- Example request and response bodies in the OpenAPI schema.
+- Clear endpoint names and tags.
+- README sample calls and Swagger UI authorization instructions.
 - Known limitations section.
+- OpenAPI contract integration coverage for the generated API document.
+- Documentation for the optional development-only admin bootstrap delivered with
+  this feature slice.
+- Removal of the invalid placeholder admin seed and documentation of the
+  development bootstrap safety checks.
 
 Learn:
 
@@ -470,15 +484,20 @@ Learn:
 
 Git:
 
-- Branch: `docs/api-documentation`
+- Branch: `docs/update-project-status`
 - Example commits:
   - `docs: add OpenAPI annotations and examples`
   - `docs: update README with sample calls and limitations`
-- PR title: "Improve API documentation".
+- PR title: "Update project status and complete Phase 11".
 
 Checkpoint:
 
-- Someone can open Swagger and understand the API without asking you.
+- Someone can open Swagger and understand the API without asking you. [done —
+  documented endpoints, schemas, examples, security, and common failure
+  responses]
+- A local developer can opt in to a development admin without a committed
+  default credential. [done — guarded by the `dev` profile and
+  `ledger.dev-admin.enabled`]
 
 ## Week 6: Ship It
 
