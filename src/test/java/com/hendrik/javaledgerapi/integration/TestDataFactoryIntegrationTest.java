@@ -26,19 +26,29 @@ class TestDataFactoryIntegrationTest extends PostgresIntegrationTest {
 
     @Test
     void cleanupCreatedData_removesOnlyFactoryCreatedData() {
-        User persistedUser = testDataFactory.persistUser(Role.USER);
-        Account persistedAccount = testDataFactory.persistAccount(persistedUser, BigDecimal.ZERO);
-        Transaction persistedTransaction = testDataFactory.persistCompletedDepositTransaction(persistedAccount, BigDecimal.TEN);
+        User retainedUser = new User();
+        retainedUser.setEmail(UUID.randomUUID() + "@retained.com");
+        retainedUser.setPasswordHash("retained-user-hash");
+        retainedUser.setRole(Role.USER);
+        retainedUser = userRepository.save(retainedUser);
 
-        UUID userId = persistedUser.getId();
-        UUID accountId = persistedAccount.getId();
-        UUID transactionId = persistedTransaction.getId();
+        try {
+            User persistedUser = testDataFactory.persistUser(Role.USER);
+            Account persistedAccount = testDataFactory.persistAccount(persistedUser, BigDecimal.ZERO);
+            Transaction persistedTransaction = testDataFactory.persistCompletedDepositTransaction(persistedAccount, BigDecimal.TEN);
 
-        testDataFactory.cleanupCreatedData();
+            UUID userId = persistedUser.getId();
+            UUID accountId = persistedAccount.getId();
+            UUID transactionId = persistedTransaction.getId();
 
-        assertThat(userRepository.findById(userId)).isNotPresent();
-        assertThat(accountRepository.findById(accountId)).isNotPresent();
-        assertThat(transactionRepository.findById(transactionId)).isNotPresent();
-        assertThat(userRepository.findByEmail("admin@ledger.com")).isPresent();
+            testDataFactory.cleanupCreatedData();
+
+            assertThat(userRepository.findById(userId)).isNotPresent();
+            assertThat(accountRepository.findById(accountId)).isNotPresent();
+            assertThat(transactionRepository.findById(transactionId)).isNotPresent();
+            assertThat(userRepository.findById(retainedUser.getId())).isPresent();
+        } finally {
+            userRepository.deleteById(retainedUser.getId());
+        }
     }
 }
