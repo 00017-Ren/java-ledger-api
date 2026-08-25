@@ -6,7 +6,9 @@ The project models a simple banking-style ledger where users can register, creat
 
 ## Project Status
 
-In progress. Current phase: Phase 11, API documentation improvements.
+Phase 11 (API documentation improvements): **COMPLETED**
+
+Current phase: Phase 12, Dockerizing the full application.
 
 Completed:
 
@@ -37,9 +39,16 @@ Completed:
 - REST controllers for deposits, transfers, and transaction history
 - Transaction service and controller tests, including validation failure paths
   and optimistic-lock propagation
+- OpenAPI documentation with endpoint descriptions, response schemas, examples,
+  and JWT bearer authentication support in Swagger UI
+- OpenAPI contract integration tests covering the generated API document
+- Optional development-only admin bootstrap, guarded by the `dev` profile and an
+  explicit opt-in property
+- Removal of the invalid placeholder admin migration seed
+- Transaction create responses populated with their persisted `createdAt` value
 
 Upcoming work:
-- API documentation improvements
+- Dockerizing the full application
 - Deployment
 
 ## Tech Stack
@@ -68,12 +77,13 @@ Implemented features:
 - Global error handling
 - Automated repository, service, controller, security, and DTO tests
 - Admin-only deposits
+- Optional development admin provisioning for local testing
 - Transfers between accounts with ownership checks for access
 - Transaction history with pagination
 - Optimistic-lock conflict handling with a `409` response
 
 Remaining features:
-- OpenAPI descriptions and examples
+- Dockerized application deployment
 
 ## Domain Model
 
@@ -142,6 +152,23 @@ curl -s "http://localhost:8080/api/v1/accounts/$ACCOUNT_ID/transactions" \
 Deposits (`POST /api/v1/transactions/deposit`) additionally require an `ADMIN`
 role and are omitted here since a freshly registered user is a `USER`.
 
+### Optional Development Admin
+
+The application does not insert a default administrator into the database. For
+local development, an administrator can be provisioned at startup by enabling
+the `dev`-profile bootstrap and supplying credentials:
+
+```bash
+./mvnw spring-boot:run \
+  -Dspring-boot.run.arguments="--ledger.dev-admin.enabled=true,--ledger.dev-admin.email=admin@example.com,--ledger.dev-admin.password=use-a-local-password"
+```
+
+The bootstrap is disabled by default and only runs with the `dev` profile. If
+the configured email already belongs to an `ADMIN`, startup continues without
+changing that user. If it belongs to a normal user, startup fails rather than
+silently escalating privileges. Do not commit real credentials or use this
+development configuration in production.
+
 ### Authorizing in Swagger UI
 
 1. Open `http://localhost:8080/swagger-ui.html`.
@@ -153,8 +180,9 @@ role and are omitted here since a freshly registered user is a `USER`.
    automatically. `POST /api/v1/auth/register` and `POST /api/v1/auth/login`
    stay callable without it.
 
-Never publish the seed-admin password, a JWT, or the development JWT signing
-secret from `application-dev.yml` in documentation, screenshots, or commits.
+Never publish a development admin password, a JWT, or the development JWT
+signing secret from `application-dev.yml` in documentation, screenshots, or
+commits.
 
 ## Known Limitations
 
@@ -246,4 +274,3 @@ This project is designed to show practical backend competence in:
 - Global exception handling
 - Unit and integration testing
 - Dockerized development
-
