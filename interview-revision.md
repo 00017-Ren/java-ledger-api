@@ -69,6 +69,16 @@ takeaway**.
   safer and version-controlled, unlike `ddl-auto: update` which should never be
   used in production.
 
+## Database Migrations
+
+### Append-only migrations and invalid seed cleanup
+- **Why it matters:** Flyway records a checksum for every applied versioned
+  migration. Editing an applied script breaks validation and makes environments
+  diverge.
+- **Takeaway:** Correct an invalid historical seed with a new, idempotent
+  migration. Match the known placeholder email, hash, and role so the cleanup
+  cannot delete a legitimate user.
+
 ## Testing
 
 ### Watch a test fail before you trust it passing
@@ -402,6 +412,15 @@ takeaway**.
   silently still open only if you wrote `permitAll()` too broadly, or
   silently still locked if you forgot to list it at all.
 
+### Development-only privileged-account bootstrap
+- **Why it matters:** Demonstrates defense in depth and safe idempotent startup
+  work without adding a role-escalation API endpoint.
+- **Takeaway:** Guard a development admin bootstrap with both `@Profile("dev")`
+  and an explicit opt-in property. On repeat startup, accept an existing ADMIN
+  unchanged, but fail if the email belongs to a normal user. A unique database
+  constraint remains the concurrency authority: on a duplicate-save race,
+  re-read and accept only an ADMIN.
+
 ### CSRF protection vs. stateless bearer-token APIs
 - **Why it matters:** Disabling CSRF protection looks alarming out of context
   ("why are you turning off security?") — being able to justify it precisely
@@ -715,4 +734,3 @@ takeaway**.
 ### Validate before mutate
 - **Why it matters:** Validating first prevents partial balance changes and keeps money movement atomic: a failed transfer must not leave only one balance updated.
 - **Takeaway:** Check self-transfer, account existence, ownership, currency, and sufficient funds before mutating balances or saving through repositories. This ordering makes no-save-on-failure behaviour provable with Mockito, without needing a real transaction manager.
-
