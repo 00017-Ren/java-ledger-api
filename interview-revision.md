@@ -69,6 +69,17 @@ takeaway**.
   safer and version-controlled, unlike `ddl-auto: update` which should never be
   used in production.
 
+### Persistence context, flush, and transaction commit
+- **Why it matters:** Distinguishes `save()` from actually executing SQL and is a
+  common JPA transaction-boundary interview question.
+- **Takeaway:** `save()` makes an entity managed or schedules it for persistence
+  in the persistence context; it does not necessarily send SQL immediately.
+  **Flush** synchronizes that context with the database by sending pending SQL,
+  and generated fields may become available at that point. **Commit** completes
+  the transaction, making the changes durable and visible to other transactions
+  (subject to the database's isolation rules). A flush is not a commit: a later
+  rollback can still undo the flushed SQL.
+
 ## Database Migrations
 
 ### Append-only migrations and invalid seed cleanup
