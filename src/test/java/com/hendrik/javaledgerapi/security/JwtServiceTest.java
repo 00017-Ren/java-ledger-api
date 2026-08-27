@@ -4,6 +4,7 @@ package com.hendrik.javaledgerapi.security;
 import com.hendrik.javaledgerapi.model.User;
 import com.hendrik.javaledgerapi.model.enums.Role;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.security.WeakKeyException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -11,12 +12,14 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class JwtServiceTest {
 
     private static final long DEFAULT_EXPIRATION_TIME = 3600;
     private static final long SHORT_EXPIRATION_TIME = 5;
     private static final String TEST_SECRET = "test-secret-key-at-least-32chars";
+    private static final String TOO_SHORT_SECRET = "too-short-for-hs256";
 
     private UserPrincipal principal;
 
@@ -81,5 +84,13 @@ class JwtServiceTest {
                 "0" + token.substring(tokenSignatureIndex + 2);
 
         assertThat(jwtService.validateToken(tamperedToken)).isFalse();
+    }
+
+    @Test
+    void constructor_throwsWeakKeyException_whenSecretTooShortForHs256() {
+        JwtProperties jwtProperties = new JwtProperties(TOO_SHORT_SECRET, DEFAULT_EXPIRATION_TIME);
+
+        assertThatThrownBy(() -> new JwtService(jwtProperties))
+                .isInstanceOf(WeakKeyException.class);
     }
 }
