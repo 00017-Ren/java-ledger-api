@@ -463,6 +463,19 @@ takeaway**.
 - **Takeaway:** A JWT is signed, not encrypted. Put only non-sensitive claims in it (e.g. user id, role), sign it with an HMAC key, and verify the signature before trusting the claims.
 - **Takeaway:** In jjwt 0.12/0.13, parse signed tokens with `Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload()`. `parserBuilder()` is no longer the current API.
 
+### HMAC key length and JJWT's fail-fast `WeakKeyException`
+- **Why it matters:** "How do you make sure a weak JWT secret can't be used?"
+  tests whether you know signing algorithms have minimum key-strength
+  requirements, and whether failure happens early or silently.
+- **Takeaway:** HS256 requires a key of at least 256 bits (32 bytes when the
+  secret is UTF-8 encoded). `Keys.hmacShaKeyFor(bytes)` enforces this and
+  throws `io.jsonwebtoken.security.WeakKeyException` immediately if the key
+  is too short. In this codebase that call happens in `JwtService`'s
+  constructor, not at sign time — so a weak secret prevents the bean (and
+  therefore the whole application) from starting, rather than quietly
+  producing forgeable tokens later. This is the "fail fast" principle:
+  detect a misconfiguration at the earliest possible point.
+
 ### BCrypt: work factor and why not MD5/SHA for passwords
 - **Why it matters:** "Why not just SHA-256 the password?" is a near-universal
   interview question once password storage comes up.
@@ -570,6 +583,24 @@ takeaway**.
   `SecurityContext`, and authorization rules are tested together. A real
   `Authorization: Bearer` header minted by `JwtService` exercises the custom
   `JwtAuthenticationFilter`; Spring Security's `jwt()` test helper bypasses it.
+
+### `ApplicationContextRunner` for testing `@ConfigurationProperties` validation
+- **Why it matters:** Proving a misconfigured app fails to start (e.g. a
+  missing secret) without paying the cost of a full `@SpringBootTest` is a
+  practical Spring Boot testing pattern interviewers value.
+- **Takeaway:** `ApplicationContextRunner` boots a minimal context containing
+  only the beans you register via `.withUserConfiguration(...)`, and
+  `.withPropertyValues(...)` sets properties per test without touching real
+  config files. Because the context can legitimately fail to start, call
+  `.run(context -> ...)` and assert on the `AssertableApplicationContext`
+  itself (`assertThat(context).hasFailed()`) rather than expecting an
+  exception to propagate out of `.run()`. For `@ConfigurationProperties` +
+  JSR-303 validation failures, Spring wraps the real cause as
+  `ConfigurationPropertiesBindException` → `BindException` →
+  `BindValidationException`, with `BindValidationException` normally being
+  the root cause. Asserting `.hasRootCauseInstanceOf(BindValidationException.class)`
+  plus checking the field name appears in the stack trace confirms *why* it
+  failed, without ever asserting on (or logging) the actual property value.
 
 ## Spring / Exception Handling
 
