@@ -1,0 +1,5 @@
+spring:
+  config:
+    import: optional:configtree:/run/secrets/
+  jpa:
+    show-sql: false

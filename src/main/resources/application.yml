@@ -1,12 +1,19 @@
 spring:
-  profiles:
-    active: dev
   application:
     name: java-ledger-api
   data:
     web:
       pageable:
         max-page-size: 100
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
 
 server:
   port: 8080
+
+jwt:
+  access-token-expiration-ms: 900000        # 15 minutes
