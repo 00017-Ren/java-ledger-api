@@ -25,8 +25,8 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     public SecurityConfig(JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
-            JwtAccessDeniedHandler jwtAccessDeniedHandler,
-            JwtAuthenticationFilter jwtAuthenticationFilter) {
+                          JwtAccessDeniedHandler jwtAccessDeniedHandler,
+                          JwtAuthenticationFilter jwtAuthenticationFilter) {
         this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
         this.jwtAccessDeniedHandler = jwtAccessDeniedHandler;
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
@@ -41,9 +41,10 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests((authorize) ->
                 authorize.requestMatchers("/api/v1/auth/**",
-                        "/swagger-ui.html",
-                        "/swagger-ui/**",
-                        "/v3/api-docs/**")
+                                "/swagger-ui.html",
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/actuator/health")
                         .permitAll()
                         .anyRequest()
                         .authenticated());
