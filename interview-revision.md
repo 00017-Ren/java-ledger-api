@@ -834,6 +834,11 @@ takeaway**.
 ### Hosted Postgres SSL vs Compose private network
 - **Why it matters:** Interviewers ask why localhost JDBC works in Docker Compose but fails on Neon/RDS.
 - **Takeaway:** Compose `db` is on a private Docker network; traffic never leaves the host, so the URL is `jdbc:postgresql://db:5432/ledger` with no TLS. Neon is on the public internet and **rejects non-SSL**. Use `jdbc:postgresql://<host>/<db>?sslmode=require` (and split user/password into env vars so the password is not in the URL). Do not paste a `postgres://` URI into `SPRING_DATASOURCE_URL` — Spring/Hikari want JDBC. For Flyway on startup, use Neon’s **direct** host (no `-pooler`): PgBouncer transaction pooling can break advisory locks Flyway uses.
+- **Takeaway:** Neon routes on **SNI** (the TLS hostname). The host must be the full compute name, first label `ep-…` (e.g. `ep-cool-darkness-a1b2c3d4.eu-central-1.aws.neon.tech`). A truncated host like `c-5.eu-central-1.aws.neon.tech` cannot identify the compute → `Endpoint ID is not specified`. Workaround if SNI fails: `?options=endpoint%3D<ep-id>`. Do not put `user:password@` in the JDBC URL when username/password are separate env vars.
+
+### Always-on app vs scale-to-zero database
+- **Why it matters:** Interviewers ask how you keep a demo URL snappy without paying for two always-on services.
+- **Takeaway:** Render Starter keeps the JVM warm (~$7/mo, no 15-minute sleep). Neon Free suspends compute after ~5 minutes idle. The first request after DB sleep waits seconds for Postgres, not a minute for the API. That is a cost tradeoff, not high availability. Free Render Postgres expires in 30 days — do not use it for a portfolio URL.
 
 ### Container heap (`MaxRAMPercentage`)
 - **Why it matters:** Default MaxRAMPercentage is 25% of container RAM. On a 512 MB Render Starter instance that leaves a tiny heap and still risks the kernel OOM-killing the process if the JVM over-sizes from host RAM.

@@ -532,23 +532,24 @@ Checkpoint:
 
 - One command starts both the database and app. [done — `docker compose up --build`]
 
-## Phase 13: Deploy
+## Phase 13: Deploy [COMPLETED]
 
 Goal: make the project portfolio-visible.
 
-Good options:
+Completed:
 
-- Render
-- Railway
-- Fly.io
-- AWS Elastic Beanstalk later
+- Render Starter web service from the existing Dockerfile (not a native Java runtime).
+- Neon Free PostgreSQL over TLS (`sslmode=require`, direct host, no `-pooler`).
+- Runtime secrets via Render env vars (`JWT_SECRET`, `SPRING_DATASOURCE_*`); Compose file secrets unchanged locally.
+- Public `/actuator/health`; `server.port: ${PORT:8080}`; `-XX:MaxRAMPercentage=75.0`.
+- Live API and Swagger URLs in the README.
 
-Deploy:
+Learn:
 
-- App
-- PostgreSQL database
-- Environment variables
-- Swagger URL
+- PaaS `PORT` vs packaged `server.port`.
+- Neon SNI / full `ep-` hostname vs truncated host.
+- JDBC URL vs `postgres://`; env vars vs Compose configtree.
+- Health exposure vs leaking `/actuator/env`.
 
 Git:
 
@@ -560,7 +561,7 @@ Git:
 
 Checkpoint:
 
-- README has a live API URL.
+- README has a live API URL. [done — https://java-ledger-api.onrender.com]
 - GitHub repo description is updated.
 - LinkedIn and OfferZen can point to the deployed project.
 
