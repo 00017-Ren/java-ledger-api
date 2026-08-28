@@ -56,6 +56,20 @@ class JwtPropertiesTest {
     }
 
     @Test
+    void context_loadsSuccessfully_whenConfigTreeAbsentAndSecretProvided() {
+        contextRunner
+                .withInitializer(new ConfigDataApplicationContextInitializer())
+                .withPropertyValues(
+                        "spring.config.import=optional:configtree:/run/secrets/",
+                        "jwt.secret=" + TEST_SECRET,
+                        "jwt.access-token-expiration-ms=900000")
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context.getBean(JwtProperties.class).secret()).isEqualTo(TEST_SECRET);
+                });
+    }
+
+    @Test
     void context_loadsSuccessfully_withConfigTreePath() throws IOException {
         Files.writeString(tempDir.resolve("jwt.secret"), TEST_SECRET);
 

@@ -2,13 +2,23 @@
 
 A portfolio-grade financial ledger REST API built with Java, Spring Boot, PostgreSQL, Flyway, Spring Data JPA/Hibernate, and JWT authentication.
 
-The project models a simple banking-style ledger where users can register, create accounts, receive deposits, transfer funds, and view transaction history. The main learning goal is to demonstrate backend fundamentals relevant to Java/Spring fintech and banking roles: relational modeling, transactional consistency, authentication, authorization, validation, testing, and containerized local development.
+The project models a simple banking-style ledger where users can register, create accounts, receive deposits, transfer funds, and view transaction history. The main learning goal is to demonstrate backend fundamentals relevant to Java/Spring fintech and banking roles: relational modeling, transactional consistency, authentication, authorization, validation, testing, containerized local development, and a public hosted API.
+
+## Live Demo
+
+This is a **portfolio demo**, not a bank. Data is disposable. Do not use real passwords or personal information.
+
+- API: https://java-ledger-api.onrender.com
+- Swagger UI: https://java-ledger-api.onrender.com/swagger-ui.html
+- Health: https://java-ledger-api.onrender.com/actuator/health
+
+Register and log in via Swagger to obtain a JWT, then use **Authorize**. The API stays on Render Starter (always-on). Neon Free Postgres may sleep after idle; the first request after that can take a few seconds.
 
 ## Project Status
 
-Phase 12 (Dockerize the full app): **COMPLETED**
+Phase 13 (Deploy): **COMPLETED**
 
-Current phase: Phase 13, deployment.
+Current phase: none. The planned build is shipped.
 
 Completed:
 
@@ -47,9 +57,12 @@ Completed:
 - Removal of the invalid placeholder admin migration seed
 - Transaction create responses populated with their persisted `createdAt` value
 - Full-stack Docker Compose (`app` + `db`), multi-stage image, and file-mounted secrets
+- Public Actuator health endpoint (`/actuator/health` only)
+- Hosted deployment on Render (Docker) with Neon PostgreSQL
 
 Upcoming work:
-- Deployment
+
+- None currently planned.
 
 ## Tech Stack
 
@@ -63,6 +76,9 @@ Upcoming work:
 - JWT
 - SpringDoc OpenAPI / Swagger UI
 - Docker Compose
+- Spring Boot Actuator
+- Render
+- Neon PostgreSQL
 - JUnit 5
 - Testcontainers
 
@@ -84,7 +100,7 @@ Implemented features:
 
 Remaining features:
 
-- Hosting-platform deployment
+- None currently planned.
 
 ## Domain Model
 
@@ -198,6 +214,7 @@ The application has the following limitations by design choice:
 - Account creation does not yet handle a database-level account-number
   collision: on the rare occurrence of one, the request fails with a generic
   `500` response instead of the API's standard error format.
+- The public demo has no rate limiting. Treat hosted data as disposable.
 
 ## Local Development
 
@@ -269,6 +286,22 @@ Compose does not publish PostgreSQL `5432`, so host-run cannot use the Compose
 The `dev` profile is no longer a packaged default. Without it, host-run will not
 load localhost JDBC settings. For an optional development admin, add the
 arguments in [Optional Development Admin](#optional-development-admin).
+
+### Hosted deployment (Render + Neon)
+
+The live service is a Docker image on Render Starter with Neon Free PostgreSQL.
+Secrets are **not** in git or in the image. Set them in the Render dashboard:
+
+- `SPRING_PROFILES_ACTIVE=prod`
+- `SPRING_DATASOURCE_URL=jdbc:postgresql://<neon-direct-host>/<db>?sslmode=require`
+- `SPRING_DATASOURCE_USERNAME`
+- `SPRING_DATASOURCE_PASSWORD`
+- `JWT_SECRET` (at least 32 characters; a new production key, not the local file)
+
+Use Neon’s **direct** hostname (starts with `ep-`, no `-pooler`). Do not put
+`user:password@` in the JDBC URL. Do not enable `ledger.dev-admin` on Render.
+Health check path: `/actuator/health`. The process listens on `$PORT` (Render
+default 10000) or 8080 locally.
 
 ## Database Migrations
 

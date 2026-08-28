@@ -44,6 +44,36 @@ class SecurityFilterChainIntegrationTest extends PostgresIntegrationTest {
     private JsonMapper jsonMapper;
 
     @Test
+    void get_returns200_whenHealthRequestedWithoutAuth() throws Exception {
+        mockMvc.perform(get("/actuator/health"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UP"))
+                .andExpect(jsonPath("$.components").doesNotExist())
+                .andExpect(jsonPath("$.details").doesNotExist());
+    }
+
+    @Test
+    void get_returns401_whenActuatorEnvRequestedWithoutAuth() throws Exception {
+        mockMvc.perform(get("/actuator/env"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.error").value("Unauthorized"))
+                .andExpect(jsonPath("$.path").value("/actuator/env"));
+    }
+
+    @Test
+    void get_returns404_whenActuatorEnvRequestedWithValidToken() throws Exception {
+        User user = testDataFactory.persistUser(Role.USER);
+        UserPrincipal userPrincipal = new UserPrincipal(user);
+        String accessToken = jwtService.generateAccessToken(userPrincipal);
+
+        mockMvc.perform(get("/actuator/env")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void get_returns401_whenAuthHeaderMissing() throws Exception {
         mockMvc.perform(get("/api/v1/users/me"))
                 .andExpect(status().isUnauthorized())
