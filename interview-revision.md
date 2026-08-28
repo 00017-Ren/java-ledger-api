@@ -463,6 +463,19 @@ takeaway**.
 - **Takeaway:** A JWT is signed, not encrypted. Put only non-sensitive claims in it (e.g. user id, role), sign it with an HMAC key, and verify the signature before trusting the claims.
 - **Takeaway:** In jjwt 0.12/0.13, parse signed tokens with `Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload()`. `parserBuilder()` is no longer the current API.
 
+### HMAC key length and JJWT's fail-fast `WeakKeyException`
+- **Why it matters:** "How do you make sure a weak JWT secret can't be used?"
+  tests whether you know signing algorithms have minimum key-strength
+  requirements, and whether failure happens early or silently.
+- **Takeaway:** HS256 requires a key of at least 256 bits (32 bytes when the
+  secret is UTF-8 encoded). `Keys.hmacShaKeyFor(bytes)` enforces this and
+  throws `io.jsonwebtoken.security.WeakKeyException` immediately if the key
+  is too short. In this codebase that call happens in `JwtService`'s
+  constructor, not at sign time — so a weak secret prevents the bean (and
+  therefore the whole application) from starting, rather than quietly
+  producing forgeable tokens later. This is the "fail fast" principle:
+  detect a misconfiguration at the earliest possible point.
+
 ### BCrypt: work factor and why not MD5/SHA for passwords
 - **Why it matters:** "Why not just SHA-256 the password?" is a near-universal
   interview question once password storage comes up.
@@ -570,6 +583,24 @@ takeaway**.
   `SecurityContext`, and authorization rules are tested together. A real
   `Authorization: Bearer` header minted by `JwtService` exercises the custom
   `JwtAuthenticationFilter`; Spring Security's `jwt()` test helper bypasses it.
+
+### `ApplicationContextRunner` for testing `@ConfigurationProperties` validation
+- **Why it matters:** Proving a misconfigured app fails to start (e.g. a
+  missing secret) without paying the cost of a full `@SpringBootTest` is a
+  practical Spring Boot testing pattern interviewers value.
+- **Takeaway:** `ApplicationContextRunner` boots a minimal context containing
+  only the beans you register via `.withUserConfiguration(...)`, and
+  `.withPropertyValues(...)` sets properties per test without touching real
+  config files. Because the context can legitimately fail to start, call
+  `.run(context -> ...)` and assert on the `AssertableApplicationContext`
+  itself (`assertThat(context).hasFailed()`) rather than expecting an
+  exception to propagate out of `.run()`. For `@ConfigurationProperties` +
+  JSR-303 validation failures, Spring wraps the real cause as
+  `ConfigurationPropertiesBindException` → `BindException` →
+  `BindValidationException`, with `BindValidationException` normally being
+  the root cause. Asserting `.hasRootCauseInstanceOf(BindValidationException.class)`
+  plus checking the field name appears in the stack trace confirms *why* it
+  failed, without ever asserting on (or logging) the actual property value.
 
 ## Spring / Exception Handling
 
@@ -757,3 +788,41 @@ takeaway**.
 ### Validate before mutate
 - **Why it matters:** Validating first prevents partial balance changes and keeps money movement atomic: a failed transfer must not leave only one balance updated.
 - **Takeaway:** Check self-transfer, account existence, ownership, currency, and sufficient funds before mutating balances or saving through repositories. This ordering makes no-save-on-failure behaviour provable with Mockito, without needing a real transaction manager.
+
+## Docker
+
+### Multi-stage builds
+- **Why it matters:** Classic container interview question: how do you keep images small and reduce attack surface?
+- **Takeaway:** Each `FROM` starts a new filesystem. The builder stage has the JDK, Maven wrapper, and source. The runtime stage starts from a JRE and `COPY --from=builder` only the extracted app layers. The compiler, Maven, and source never exist in the final image — smaller image, fewer tools for an attacker.
+
+### `.dockerignore` vs `.gitignore`
+- **Why it matters:** People assume gitignore is enough. It is not.
+- **Takeaway:** `.gitignore` keeps files out of git. `.dockerignore` keeps files out of the Docker **build context** (the tarball sent to the daemon). A secret that is gitignored can still be `COPY`'d into an image if it sits on disk. Ignore `target/`, `.git/`, `.env*`, secret dirs, and IDE files.
+
+### Layered JARs (`jarmode=tools`)
+- **Why it matters:** Shows you know why copying a fat JAR as one blob is a poor Docker layer.
+- **Takeaway:** Spring Boot 4 extracts with `java -Djarmode=tools -jar app.jar extract --layers --destination extracted` (`layertools` is deprecated). Copy `dependencies` first and `application` last so code changes don't invalidate the dependency layer.
+
+### Exec-form `ENTRYPOINT` and PID 1
+- **Why it matters:** Interviewers ask why a container ignores `docker stop` / SIGTERM.
+- **Takeaway:** `ENTRYPOINT ["java", "-jar", "application.jar"]` makes the JVM PID 1, so it receives signals. Shell form (`ENTRYPOINT java -jar ...`) makes `/bin/sh` PID 1; the JVM may never see SIGTERM and cannot shut down cleanly.
+
+### Non-root container user
+- **Why it matters:** Running as root in a container is a common finding in image reviews.
+- **Takeaway:** Create a system user (`addgroup -S` / `adduser -S` on Alpine), `COPY --chown=app:app`, then `USER app`. If the process is compromised, it does not start as root.
+
+### Container DNS vs `localhost`
+- **Why it matters:** The most common "it works on my machine but not in Docker" bug.
+- **Takeaway:** `localhost` inside a container is that container, not the host and not Compose Postgres. Compose provides DNS on the default network: the JDBC URL host is the **service name** (`db`), so `jdbc:postgresql://db:5432/ledger`.
+
+### Configuration precedence and profiles
+- **Why it matters:** Interviewers ask how you avoid shipping `dev` settings (localhost DB, committed secrets) into a container.
+- **Takeaway:** Do not set `spring.profiles.active: dev` in packaged `application.yml`. Compose sets `SPRING_PROFILES_ACTIVE=prod` (environment beats packaged YAML). `prod` imports `configtree:/run/secrets/`; `dev` is for host-run only. Environment variables like `SPRING_DATASOURCE_URL` map to `spring.datasource.url`.
+
+### Compose secrets vs environment variables
+- **Why it matters:** `docker inspect` and process listings show env vars; file-mounted secrets do not.
+- **Takeaway:** Grant secrets per service (`jwt.secret` only to `app`; DB password to `app` and `db`). Compose bind-mounts them at `/run/secrets/<name>`. Spring Boot maps filenames to properties via `spring.config.import=optional:configtree:/run/secrets/`. This is **not** a production secret manager — Phase 13 must use the host's store. Local `secrets/` is gitignored and dockerignored so values are not committed or baked into the image.
+
+### Readiness vs startup order
+- **Why it matters:** `depends_on: db` is a trap; the API will crash-loop if it connects during Postgres init.
+- **Takeaway:** `service_started` only means the process launched. Postgres still initializes the data dir. Use `pg_isready` as a healthcheck and `depends_on: condition: service_healthy`. That is startup ordering, not runtime recovery if the DB dies later. `POSTGRES_*` values apply only while the volume is empty; changing the password file does not update an existing `pgdata`.

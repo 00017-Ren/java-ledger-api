@@ -1,0 +1,14 @@
+target/
+secrets/
+.git/
+.opencode/
+.env*
+*.env
+.claude/
+
+### IntelliJ
+.idea/
+*.iws
+*.iml
+*.ipr
+.junie

@@ -6,9 +6,9 @@ The project models a simple banking-style ledger where users can register, creat
 
 ## Project Status
 
-Phase 11 (API documentation improvements): **COMPLETED**
+Phase 12 (Dockerize the full app): **COMPLETED**
 
-Current phase: Phase 12, Dockerizing the full application.
+Current phase: Phase 13, deployment.
 
 Completed:
 
@@ -46,9 +46,9 @@ Completed:
   explicit opt-in property
 - Removal of the invalid placeholder admin migration seed
 - Transaction create responses populated with their persisted `createdAt` value
+- Full-stack Docker Compose (`app` + `db`), multi-stage image, and file-mounted secrets
 
 Upcoming work:
-- Dockerizing the full application
 - Deployment
 
 ## Tech Stack
@@ -83,7 +83,8 @@ Implemented features:
 - Optimistic-lock conflict handling with a `409` response
 
 Remaining features:
-- Dockerized application deployment
+
+- Hosting-platform deployment
 
 ## Domain Model
 
@@ -159,7 +160,7 @@ local development, an administrator can be provisioned at startup by enabling
 the `dev`-profile bootstrap and supplying credentials:
 
 ```bash
-./mvnw spring-boot:run \
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev \
   -Dspring-boot.run.arguments="--ledger.dev-admin.enabled=true,--ledger.dev-admin.email=admin@example.com,--ledger.dev-admin.password=use-a-local-password"
 ```
 
@@ -180,9 +181,8 @@ development configuration in production.
    automatically. `POST /api/v1/auth/register` and `POST /api/v1/auth/login`
    stay callable without it.
 
-Never publish a development admin password, a JWT, or the development JWT
-signing secret from `application-dev.yml` in documentation, screenshots, or
-commits.
+Never publish a development admin password, a JWT, or a JWT signing secret in
+documentation, screenshots, or commits.
 
 ## Known Limitations
 
@@ -207,35 +207,68 @@ Prerequisites:
 - Docker
 - Docker Compose
 
-Start PostgreSQL:
+### Secrets
+
+Create two local files (gitignored, not committed):
+
+- `secrets/jwt.secret` - at least 32 characters
+- `secrets/spring.datasource.password` - non-empty
+
+Compose mounts these as files under `/run/secrets/`. Do not put passwords or JWT
+keys in `docker-compose.yml` or in environment variables.
+
+`POSTGRES_*` values and the password file apply only while the `pgdata` volume
+is empty. Changing credentials later requires `docker compose down -v`, which
+deletes local database data.
+
+### Full stack (app + database)
 
 ```bash
-docker compose up -d
+docker compose up --build
 ```
 
-Run tests:
+Services: `app` (API) and `db` (PostgreSQL). Inside the `app` container the
+database hostname is `db`, not `localhost`. PostgreSQL port `5432` is not
+published on the host.
+
+Application URL: `http://localhost:8080`
+
+Swagger UI: `http://localhost:8080/swagger-ui.html`
+
+Stop containers and keep data:
+
+```bash
+docker compose down
+```
+
+Stop and delete the named volume (`pgdata`):
+
+```bash
+docker compose down -v
+```
+
+### Tests
+
+Run tests on the host. Do not run the Testcontainers suite inside the image
+build.
 
 ```bash
 ./mvnw clean test
 ```
 
-Run the application:
+### Run the API on the host
+
+Compose does not publish PostgreSQL `5432`, so host-run cannot use the Compose
+`db` container. You need Postgres at `localhost:5432` matching
+`application-dev.yml`, then:
 
 ```bash
-./mvnw spring-boot:run
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-Application URL:
-
-```text
-http://localhost:8080
-```
-
-Swagger UI:
-
-```text
-http://localhost:8080/swagger-ui.html
-```
+The `dev` profile is no longer a packaged default. Without it, host-run will not
+load localhost JDBC settings. For an optional development admin, add the
+arguments in [Optional Development Admin](#optional-development-admin).
 
 ## Database Migrations
 

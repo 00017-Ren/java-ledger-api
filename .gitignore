@@ -35,6 +35,7 @@ build/
 ### Secrets ###
 .env
 *.env
+secrets/
 
 ### JVM crash dumps ###
 hs_err_pid*.log

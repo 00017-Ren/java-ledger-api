@@ -4,17 +4,11 @@ spring:
     username: ledger_user
     password: ledger_pass
   jpa:
-    hibernate:
-      ddl-auto: validate
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
     show-sql: true
-  flyway:
-    enabled: true
-    locations: classpath:db/migration
 
-jwt:
-  secret: my-256-bit-secret-my-256-bit-secret-my-256-bit-secret
-  access-token-expiration-ms: 900000        # 15 minutes
+
+
