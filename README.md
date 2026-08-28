@@ -16,8 +16,6 @@ Register and log in via Swagger to obtain a JWT, then use **Authorize**. The API
 
 ## Project Status
 
-Phase 13 (Deploy): **COMPLETED**
-
 Current phase: none. The planned build is shipped.
 
 Completed:
