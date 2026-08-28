@@ -431,6 +431,10 @@ takeaway**.
   silently still open only if you wrote `permitAll()` too broadly, or
   silently still locked if you forgot to list it at all.
 
+### Actuator exposure vs Security `permitAll`
+- **Why it matters:** Platforms (Render, Kubernetes) probe HTTP health. Interviewers ask how you avoid leaking `/actuator/env` or heap dumps on a public API.
+- **Takeaway:** Two independent locks. `management.endpoints.web.exposure.include: health` means only health is registered on the web. `permitAll` on `/actuator/health` (not `/actuator/**`) lets the probe skip JWT. An unexposed path like `/actuator/env` still hits the filter chain first → **401** without a token; with a valid JWT it is **404** because the endpoint is not mapped. `show-details: never` keeps the public body as `{"status":"UP"}` with no datasource internals. Health is “the process answered HTTP”, not a full readiness contract.
+
 ### Development-only privileged-account bootstrap
 - **Why it matters:** Demonstrates defense in depth and safe idempotent startup
   work without adding a role-escalation API endpoint.
@@ -821,7 +825,19 @@ takeaway**.
 
 ### Compose secrets vs environment variables
 - **Why it matters:** `docker inspect` and process listings show env vars; file-mounted secrets do not.
-- **Takeaway:** Grant secrets per service (`jwt.secret` only to `app`; DB password to `app` and `db`). Compose bind-mounts them at `/run/secrets/<name>`. Spring Boot maps filenames to properties via `spring.config.import=optional:configtree:/run/secrets/`. This is **not** a production secret manager — Phase 13 must use the host's store. Local `secrets/` is gitignored and dockerignored so values are not committed or baked into the image.
+- **Takeaway:** Grant secrets per service (`jwt.secret` only to `app`; DB password to `app` and `db`). Compose bind-mounts them at `/run/secrets/<name>`. Spring Boot maps filenames to properties via `spring.config.import=optional:configtree:/run/secrets/`. Local `secrets/` is gitignored and dockerignored. On Render there is no `/run/secrets/`; `optional:` means a missing tree does not fail boot. Set `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, and `JWT_SECRET` in the host dashboard. Relaxed binding maps `JWT_SECRET` → `jwt.secret`. Neon URLs must be `jdbc:postgresql://…?sslmode=require`, not `postgres://`.
+
+### PaaS `PORT` vs packaged `server.port`
+- **Why it matters:** First-deploy failure “no open ports” is a classic PaaS interview question.
+- **Takeaway:** Render (and Cloud Run, Railway) inject `PORT` (Render’s default is **10000**). Spring Boot does **not** read `PORT` unless you map it. `server.port: ${PORT:8080}` keeps local Compose on 8080 and follows the platform in prod. Bind `0.0.0.0` (Spring’s default). HTTPS is terminated at Render; the JVM still speaks HTTP.
+
+### Hosted Postgres SSL vs Compose private network
+- **Why it matters:** Interviewers ask why localhost JDBC works in Docker Compose but fails on Neon/RDS.
+- **Takeaway:** Compose `db` is on a private Docker network; traffic never leaves the host, so the URL is `jdbc:postgresql://db:5432/ledger` with no TLS. Neon is on the public internet and **rejects non-SSL**. Use `jdbc:postgresql://<host>/<db>?sslmode=require` (and split user/password into env vars so the password is not in the URL). Do not paste a `postgres://` URI into `SPRING_DATASOURCE_URL` — Spring/Hikari want JDBC. For Flyway on startup, use Neon’s **direct** host (no `-pooler`): PgBouncer transaction pooling can break advisory locks Flyway uses.
+
+### Container heap (`MaxRAMPercentage`)
+- **Why it matters:** Default MaxRAMPercentage is 25% of container RAM. On a 512 MB Render Starter instance that leaves a tiny heap and still risks the kernel OOM-killing the process if the JVM over-sizes from host RAM.
+- **Takeaway:** Java 10+ detects cgroup limits (`UseContainerSupport` is on by default). Put `-XX:MaxRAMPercentage=75.0` on the exec-form `ENTRYPOINT` so 75% of **container** RAM is heap and 25% remains for metaspace/direct/OS. Prefer a percentage over a hard `-Xmx` so the same image works at 512 MB and at 2 GB. `JAVA_TOOL_OPTIONS` also works with exec form (the JVM reads it); `$JAVA_OPTS` does not unless you use a shell entrypoint.
 
 ### Readiness vs startup order
 - **Why it matters:** `depends_on: db` is a trap; the API will crash-loop if it connects during Postgres init.
