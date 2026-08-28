@@ -4,11 +4,39 @@ services:
     environment:
       POSTGRES_DB: ledger
       POSTGRES_USER: ledger_user
-      POSTGRES_PASSWORD: ledger_pass
-    ports:
-      - "5432:5432"
+      POSTGRES_PASSWORD_FILE: /run/secrets/spring.datasource.password
     volumes:
       - pgdata:/var/lib/postgresql/data
+    secrets:
+      - spring.datasource.password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ledger_user -d ledger"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/ledger
+      SPRING_DATASOURCE_USERNAME: ledger_user
+    secrets:
+      - spring.datasource.password
+      - jwt.secret
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+secrets:
+  spring.datasource.password:
+    file: ./secrets/spring.datasource.password
+  jwt.secret:
+    file: ./secrets/jwt.secret
 
 volumes:
   pgdata:
