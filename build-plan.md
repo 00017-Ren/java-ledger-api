@@ -501,16 +501,18 @@ Checkpoint:
 
 ## Week 6: Ship It
 
-## Phase 12: Dockerize The Full App
+## Phase 12: Dockerize The Full App [COMPLETED]
 
 Goal: run the app and database together.
 
-Add later:
+Completed:
 
-- Dockerfile
-- App service in `docker-compose.yml`
-- Environment-variable based config
-- Production-safe JWT secret handling
+- Multi-stage Dockerfile (Temurin 25 JDK builder, JRE runtime, layered jar).
+- `.dockerignore` so secrets and build junk never enter the image context.
+- `app` service in `docker-compose.yml` with `prod` profile and JDBC to `db`.
+- Compose secrets for JWT signing key and database password (config tree).
+- Postgres `POSTGRES_PASSWORD_FILE`, `pg_isready` healthcheck, `service_healthy`.
+- PostgreSQL port not published; named `pgdata` volume retained.
 
 Learn:
 
@@ -528,7 +530,7 @@ Git:
 
 Checkpoint:
 
-- One command starts both the database and app.
+- One command starts both the database and app. [done — `docker compose up --build`]
 
 ## Phase 13: Deploy
 
