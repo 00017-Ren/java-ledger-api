@@ -83,6 +83,30 @@ Upcoming work:
 - JUnit 5
 - Testcontainers
 
+## Architecture
+
+```mermaid
+flowchart LR
+    client[API Client] -->|HTTPS REST| security
+
+    subgraph render[Render - Spring Boot API]
+        security[Spring Security + JWT]
+        controllers[REST Controllers]
+        services[Application Services]
+        persistence[Spring Data JPA + Hibernate]
+        flyway[Flyway]
+    end
+
+    neon[(Neon PostgreSQL)]
+
+    flyway -.->|Schema migrations at startup| neon
+
+    security -->|Permitted or authorized request| controllers
+    controllers -->|Validated DTO| services
+    services -->|Repository calls| persistence
+    persistence -->|JDBC/TLS| neon
+```
+
 ## Core Features
 
 Implemented features:
@@ -341,3 +365,7 @@ This project is designed to show practical backend competence in:
 - Global exception handling
 - Unit and integration testing
 - Dockerized development
+
+## License
+
+This project is licensed under [MIT License](LICENSE)
