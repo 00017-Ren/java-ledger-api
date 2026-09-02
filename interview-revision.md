@@ -847,3 +847,21 @@ takeaway**.
 ### Readiness vs startup order
 - **Why it matters:** `depends_on: db` is a trap; the API will crash-loop if it connects during Postgres init.
 - **Takeaway:** `service_started` only means the process launched. Postgres still initializes the data dir. Use `pg_isready` as a healthcheck and `depends_on: condition: service_healthy`. That is startup ordering, not runtime recovery if the DB dies later. `POSTGRES_*` values apply only while the volume is empty; changing the password file does not update an existing `pgdata`.
+
+## CI / CD
+
+### Continuous integration vs continuous delivery/deployment
+- **Why it matters:** CI/CD is a common interview topic, and the terms describe
+  different levels of automation.
+- **Takeaway:** Continuous integration automatically builds and tests each
+  change so regressions are found before merge. Continuous delivery additionally
+  keeps a releasable artifact ready for a manual production release. Continuous
+  deployment automatically releases every passing change. This workflow is CI:
+  it tests the application and proves the Docker image builds, but does not deploy.
+
+### Least privilege and immutable GitHub Actions
+- **Why it matters:** Workflow dependencies run code with access to the checkout
+  and `GITHUB_TOKEN`, making CI configuration part of the software supply chain.
+- **Takeaway:** Give `GITHUB_TOKEN` only `contents: read` when a workflow only
+  builds and tests. Pin actions to full commit SHAs so a moved version tag cannot
+  silently change executed code; keep the release tag in a comment for readability.
