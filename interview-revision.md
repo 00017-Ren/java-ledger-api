@@ -276,6 +276,16 @@ takeaway**.
 
 ## Architecture / System Design
 
+### Architecture diagram scope
+- **Why it matters:** System design discussions test whether you can communicate
+  important deployment boundaries and request flow without burying the audience
+  in implementation detail.
+- **Takeaway:** A high-level diagram should show external systems, hosting
+  boundaries, and major application layers. For this API: client, Render,
+  Spring Security, controllers, services, persistence, Flyway, and Neon
+  PostgreSQL. Omit DTOs, entities, and individual classes unless the question
+  specifically requires a lower-level design.
+
 ### Package by layer vs package by feature
 - **Why it matters:** A recurring architecture/DDD discussion; shows you think
   about maintainability, not just "does it work".

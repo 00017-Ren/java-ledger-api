@@ -83,6 +83,30 @@ Upcoming work:
 - JUnit 5
 - Testcontainers
 
+## Architecture
+
+```mermaid
+flowchart LR
+    client[API Client] -->|HTTPS REST| security
+
+    subgraph render[Render - Spring Boot API]
+        security[Spring Security + JWT]
+        controllers[REST Controllers]
+        services[Application Services]
+        persistence[Spring Data JPA + Hibernate]
+        flyway[Flyway]
+    end
+
+    neon[(Neon PostgreSQL)]
+
+    flyway -.->|Schema migrations at startup| neon
+
+    security -->|Permitted or authorized request| controllers
+    controllers -->|Validated DTO| services
+    services -->|Repository calls| persistence
+    persistence -->|JDBC/TLS| neon
+```
+
 ## Core Features
 
 Implemented features:
