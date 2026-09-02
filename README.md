@@ -341,3 +341,7 @@ This project is designed to show practical backend competence in:
 - Global exception handling
 - Unit and integration testing
 - Dockerized development
+
+## License
+
+This project is licensed under [MIT License](LICENSE)
