@@ -1,5 +1,7 @@
 # Java Ledger API
 
+[![CI](https://github.com/00017-Ren/java-ledger-api/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/00017-Ren/java-ledger-api/actions/workflows/ci.yml)
+
 A portfolio-grade financial ledger REST API built with Java, Spring Boot, PostgreSQL, Flyway, Spring Data JPA/Hibernate, and JWT authentication.
 
 The project models a simple banking-style ledger where users can register, create accounts, receive deposits, transfer funds, and view transaction history. The main learning goal is to demonstrate backend fundamentals relevant to Java/Spring fintech and banking roles: relational modeling, transactional consistency, authentication, authorization, validation, testing, containerized local development, and a public hosted API.
@@ -59,6 +61,7 @@ Completed:
 - Full-stack Docker Compose (`app` + `db`), multi-stage image, and file-mounted secrets
 - Public Actuator health endpoint (`/actuator/health` only)
 - Hosted deployment on Render (Docker) with Neon PostgreSQL
+- GitHub Actions CI running the full test suite and production Docker build
 
 Upcoming work:
 
