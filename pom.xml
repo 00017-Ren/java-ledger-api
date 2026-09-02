@@ -10,7 +10,7 @@
     </parent>
     <groupId>com.hendrik</groupId>
     <artifactId>java-ledger-api</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.1.0</version>
     <name>java-ledger-api</name>
     <description>java-ledger-api</description>
     <url/>

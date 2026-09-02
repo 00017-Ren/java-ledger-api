@@ -8,7 +8,7 @@ COPY src/ src/
 
 RUN chmod +x mvnw
 RUN ./mvnw clean package -DskipTests -B
-RUN mv target/java-ledger-api-0.0.1-SNAPSHOT.jar application.jar
+RUN mv target/*.jar application.jar
 
 RUN java -Djarmode=tools -jar application.jar extract --layers --destination extracted
 
